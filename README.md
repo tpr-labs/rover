@@ -63,6 +63,7 @@ Columns used by app:
 - `item_value` (`VARCHAR2(500)`, required)
 - `additional_info` (`VARCHAR2(4000)`, optional)
 - `category` (`VARCHAR2(100)`, optional)
+- `is_active` (`CHAR(1)`, default `Y`, values `Y|N`)
 - `created_at` (auto)
 - `updated_at` (auto)
 
@@ -71,10 +72,12 @@ Pages/endpoints:
 - `GET/POST /kv/new` create
 - `GET /kv/<item_key>` detail
 - `GET/POST /kv/<item_key>/edit` update
-- `POST /kv/<item_key>/delete` delete
+- `POST /kv/<item_key>/delete` deactivate (soft delete)
+- `POST /kv/<item_key>/restore` restore inactive key
 
 Behavior:
 - Duplicate key insert shows user-friendly error (`Key already exists`).
+- Default list view shows active records; status filter supports `active/inactive/all`.
 - Validation limits enforced in app layer:
   - key max 120 chars (safe pattern)
   - value max 500 chars

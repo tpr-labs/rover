@@ -9,6 +9,11 @@ from .db import get_db_connection
 KEY_RE = re.compile(r"^[A-Za-z0-9_:\-.]{1,120}$")
 
 
+def _normalized_category(category: str | None) -> str:
+    value = (category or "").strip()
+    return value if value else "NA"
+
+
 def validate_key_value_input(item_key: str, item_value: str, additional_info: str | None, category: str | None) -> None:
     if not KEY_RE.fullmatch((item_key or "").strip()):
         raise ValueError("Key must be 1-120 chars and contain only letters, numbers, _ : - .")
@@ -22,7 +27,14 @@ def validate_key_value_input(item_key: str, item_value: str, additional_info: st
         raise ValueError("Category must be at most 100 characters")
 
 
-def list_items(search: str | None, category: str | None, page: int, page_size: int) -> tuple[list[dict], int]:
+def _normalize_status(status: str | None) -> str:
+    value = (status or "active").strip().lower()
+    if value not in {"active", "inactive", "all"}:
+        return "active"
+    return value
+
+
+def list_items(search: str | None, category: str | None, status: str | None, page: int, page_size: int) -> tuple[list[dict], int, str]:
     search = (search or "").strip()
     category = (category or "").strip()
     page = max(1, page)
@@ -31,6 +43,12 @@ def list_items(search: str | None, category: str | None, page: int, page_size: i
 
     where = []
     params: dict[str, object] = {}
+    status = _normalize_status(status)
+
+    if status == "active":
+        where.append("is_active = 'Y'")
+    elif status == "inactive":
+        where.append("is_active = 'N'")
 
     if search:
         where.append("(LOWER(item_key) LIKE :search OR LOWER(item_value) LIKE :search OR LOWER(NVL(additional_info, '')) LIKE :search)")
@@ -43,7 +61,7 @@ def list_items(search: str | None, category: str | None, page: int, page_size: i
 
     count_sql = f"SELECT COUNT(*) FROM kv_store {where_sql}"
     list_sql = f"""
-        SELECT item_key, item_value, additional_info, category, created_at, updated_at
+        SELECT item_key, item_value, additional_info, category, is_active, created_at, updated_at
         FROM kv_store
         {where_sql}
         ORDER BY updated_at DESC
@@ -64,19 +82,20 @@ def list_items(search: str | None, category: str | None, page: int, page_size: i
                     "item_value": r[1],
                     "additional_info": r[2],
                     "category": r[3],
-                    "created_at": r[4],
-                    "updated_at": r[5],
+                    "is_active": r[4],
+                    "created_at": r[5],
+                    "updated_at": r[6],
                 }
                 for r in cur.fetchall()
             ]
 
     total_pages = max(1, math.ceil(total / page_size))
-    return rows, total_pages
+    return rows, total_pages, status
 
 
 def get_item(item_key: str) -> dict | None:
     sql = """
-        SELECT item_key, item_value, additional_info, category, created_at, updated_at
+        SELECT item_key, item_value, additional_info, category, is_active, created_at, updated_at
         FROM kv_store
         WHERE item_key = :item_key
     """
@@ -91,8 +110,9 @@ def get_item(item_key: str) -> dict | None:
                 "item_value": row[1],
                 "additional_info": row[2],
                 "category": row[3],
-                "created_at": row[4],
-                "updated_at": row[5],
+                "is_active": row[4],
+                "created_at": row[5],
+                "updated_at": row[6],
             }
 
 
@@ -111,7 +131,7 @@ def create_item(item_key: str, item_value: str, additional_info: str | None, cat
                         "item_key": item_key.strip(),
                         "item_value": item_value.strip(),
                         "additional_info": (additional_info or "").strip() or None,
-                        "category": (category or "").strip() or None,
+                        "category": _normalized_category(category),
                     },
                 )
                 conn.commit()
@@ -122,13 +142,18 @@ def create_item(item_key: str, item_value: str, additional_info: str | None, cat
                 raise
 
 
-def update_item(item_key: str, item_value: str, additional_info: str | None, category: str | None) -> bool:
+def update_item(item_key: str, item_value: str, additional_info: str | None, category: str | None, is_active: str = "Y") -> bool:
     validate_key_value_input(item_key, item_value, additional_info, category)
+    is_active = (is_active or "Y").strip().upper()
+    if is_active not in {"Y", "N"}:
+        raise ValueError("Status must be Y or N")
+
     sql = """
         UPDATE kv_store
         SET item_value = :item_value,
             additional_info = :additional_info,
-            category = :category
+            category = :category,
+            is_active = :is_active
         WHERE item_key = :item_key
     """
     with get_db_connection() as conn:
@@ -139,15 +164,25 @@ def update_item(item_key: str, item_value: str, additional_info: str | None, cat
                     "item_key": item_key,
                     "item_value": item_value.strip(),
                     "additional_info": (additional_info or "").strip() or None,
-                    "category": (category or "").strip() or None,
+                    "category": _normalized_category(category),
+                    "is_active": is_active,
                 },
             )
             conn.commit()
             return cur.rowcount > 0
 
 
-def delete_item(item_key: str) -> bool:
-    sql = "DELETE FROM kv_store WHERE item_key = :item_key"
+def deactivate_item(item_key: str) -> bool:
+    sql = "UPDATE kv_store SET is_active = 'N' WHERE item_key = :item_key"
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, {"item_key": item_key})
+            conn.commit()
+            return cur.rowcount > 0
+
+
+def restore_item(item_key: str) -> bool:
+    sql = "UPDATE kv_store SET is_active = 'Y' WHERE item_key = :item_key"
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, {"item_key": item_key})

@@ -13,6 +13,8 @@
 <div class="alert alert-success">Created successfully.</div>
 {% elif message == 'updated' %}
 <div class="alert alert-success">Updated successfully.</div>
+{% elif message == 'restored' %}
+<div class="alert alert-success">Restored successfully.</div>
 {% endif %}
 
 <div class="card shadow-sm border-0 mb-3">
@@ -24,6 +26,14 @@
       <dd class="col-sm-9" style="white-space: pre-wrap;">{{ item.additional_info or '-' }}</dd>
       <dt class="col-sm-3">Category</dt>
       <dd class="col-sm-9">{{ item.category or '-' }}</dd>
+      <dt class="col-sm-3">Status</dt>
+      <dd class="col-sm-9">
+        {% if item.is_active == 'Y' %}
+        <span class="badge text-bg-success">Active</span>
+        {% else %}
+        <span class="badge text-bg-secondary">Inactive</span>
+        {% endif %}
+      </dd>
       <dt class="col-sm-3">Created At</dt>
       <dd class="col-sm-9">{{ item.created_at }}</dd>
       <dt class="col-sm-3">Updated At</dt>
@@ -32,8 +42,15 @@
   </div>
 </div>
 
-<form method="post" action="{{ url_for('kv_delete', item_key=item.item_key) }}" onsubmit="return confirm('Delete this key?');">
+{% if item.is_active == 'Y' %}
+<form method="post" action="{{ url_for('kv_delete', item_key=item.item_key) }}" onsubmit="return confirm('Deactivate this key?');">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-  <button type="submit" class="btn btn-outline-danger">Delete</button>
+  <button type="submit" class="btn btn-outline-danger">Deactivate</button>
 </form>
+{% else %}
+<form method="post" action="{{ url_for('kv_restore', item_key=item.item_key) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+  <button type="submit" class="btn btn-outline-success">Restore</button>
+</form>
+{% endif %}
 {% endblock %}

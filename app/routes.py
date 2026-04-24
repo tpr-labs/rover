@@ -4,7 +4,7 @@ from flask import jsonify, redirect, render_template, request, session, url_for
 
 from .auth import get_login_token, get_safe_next_url, is_valid_csrf
 from .db import get_db_connection, get_schema, execute_sql_explorer_query
-from .keyvalue_repo import create_item, delete_item, get_item, list_items, update_item
+from .keyvalue_repo import create_item, deactivate_item, get_item, list_items, restore_item, update_item
 
 
 def sql_write_mode_enabled() -> bool:
@@ -137,15 +137,17 @@ def register_routes(app):
     def kv_list():
         search = request.args.get("q", "")
         category = request.args.get("category", "")
+        status = request.args.get("status", "active")
         page = max(1, int(request.args.get("page", "1")))
         page_size = 20
 
-        items, total_pages = list_items(search=search, category=category, page=page, page_size=page_size)
+        items, total_pages, status = list_items(search=search, category=category, status=status, page=page, page_size=page_size)
         return render_template(
             "kv_list.html",
             items=items,
             search=search,
             category=category,
+            status=status,
             page=page,
             total_pages=total_pages,
         )
@@ -195,9 +197,10 @@ def register_routes(app):
             "item_value": request.form.get("item_value") or "",
             "additional_info": request.form.get("additional_info") or "",
             "category": request.form.get("category") or "",
+            "is_active": request.form.get("is_active") or "Y",
         }
         try:
-            ok = update_item(item_key, item["item_value"], item["additional_info"], item["category"])
+            ok = update_item(item_key, item["item_value"], item["additional_info"], item["category"], item["is_active"])
             if not ok:
                 return render_template("error.html"), 404
             return redirect(url_for("kv_detail", item_key=item_key, msg="updated"))
@@ -208,5 +211,12 @@ def register_routes(app):
     def kv_delete(item_key: str):
         if not is_valid_csrf(request.form.get("csrf_token")):
             return render_template("error.html"), 400
-        delete_item(item_key)
-        return redirect(url_for("kv_list"))
+        deactivate_item(item_key)
+        return redirect(url_for("kv_list", msg="deactivated"))
+
+    @app.post("/kv/<path:item_key>/restore")
+    def kv_restore(item_key: str):
+        if not is_valid_csrf(request.form.get("csrf_token")):
+            return render_template("error.html"), 400
+        restore_item(item_key)
+        return redirect(url_for("kv_detail", item_key=item_key, msg="restored"))

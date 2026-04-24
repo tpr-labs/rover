@@ -9,13 +9,20 @@
 <div class="card shadow-sm border-0 mb-3">
   <div class="card-body">
     <form method="get" class="row g-2">
-      <div class="col-md-5">
+      <div class="col-md-4">
         <input class="form-control" name="q" placeholder="Search key/value/info" value="{{ search }}" />
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <input class="form-control" name="category" placeholder="Category" value="{{ category }}" />
       </div>
-      <div class="col-md-3 d-grid">
+      <div class="col-md-3">
+        <select class="form-select" name="status">
+          <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
+          <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactive</option>
+          <option value="all" {% if status == 'all' %}selected{% endif %}>All</option>
+        </select>
+      </div>
+      <div class="col-md-2 d-grid">
         <button class="btn btn-outline-primary" type="submit">Search</button>
       </div>
     </form>
@@ -31,6 +38,7 @@
             <th>Key</th>
             <th>Value</th>
             <th>Category</th>
+            <th>Status</th>
             <th>Updated</th>
             <th></th>
           </tr>
@@ -41,11 +49,18 @@
             <td class="fw-semibold">{{ item.item_key }}</td>
             <td>{{ item.item_value }}</td>
             <td>{{ item.category or '-' }}</td>
+            <td>
+              {% if item.is_active == 'Y' %}
+              <span class="badge text-bg-success">Active</span>
+              {% else %}
+              <span class="badge text-bg-secondary">Inactive</span>
+              {% endif %}
+            </td>
             <td>{{ item.updated_at }}</td>
             <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('kv_detail', item_key=item.item_key) }}">View</a></td>
           </tr>
         {% else %}
-          <tr><td colspan="5" class="text-center text-muted py-4">No records found.</td></tr>
+          <tr><td colspan="6" class="text-center text-muted py-4">No records found.</td></tr>
         {% endfor %}
         </tbody>
       </table>
@@ -57,10 +72,10 @@
   <span class="text-muted">Page {{ page }} of {{ total_pages }}</span>
   <div class="d-flex gap-2">
     {% if page > 1 %}
-    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('kv_list', q=search, category=category, page=page-1) }}">Previous</a>
+    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('kv_list', q=search, category=category, status=status, page=page-1) }}">Previous</a>
     {% endif %}
     {% if page < total_pages %}
-    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('kv_list', q=search, category=category, page=page+1) }}">Next</a>
+    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('kv_list', q=search, category=category, status=status, page=page+1) }}">Next</a>
     {% endif %}
   </div>
 </div>
