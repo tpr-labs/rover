@@ -1,0 +1,27 @@
+{% extends "shared/base.html" %}
+{% block title %}Dashboard · Rover{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0">Projects Dashboard</h1>
+  <span class="badge text-bg-primary">{{ projects|length }} projects</span>
+</div>
+
+<div class="row g-3">
+  {% for p in projects %}
+  <div class="col-12 col-md-6 col-lg-4">
+    <a href="{{ p.path }}" class="text-decoration-none">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6 mb-1 text-dark">{{ p.title }}</h2>
+          <p class="text-muted small mb-0">/{{ p.key }}</p>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% else %}
+  <div class="col-12">
+    <div class="alert alert-info mb-0">No dashboard projects configured yet. Add active `kv_store` records with category `dashboard`.</div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

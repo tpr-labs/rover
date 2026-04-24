@@ -6,15 +6,24 @@ Explorer
 - `app.py` - runtime entrypoint (creates Flask app)
 - `app/`
   - `__init__.py` - app factory + global error handler
-  - `config.py` - app/session configuration
-  - `auth.py` - auth guard, CSRF helpers, session auth utilities
-  - `db.py` - Oracle connection + schema validation
-  - `routes.py` - HTTP routes
+  - `core/` - shared infrastructure modules
+    - `config.py` - app/session configuration
+    - `auth.py` - auth guard, CSRF helpers, session auth utilities
+    - `db.py` - Oracle connection + schema validation + SQL explorer validation
+  - `projects/` - feature-first project packages
+    - `auth/routes.py` - login/logout routes
+    - `core/routes.py` - health, home, dashboard, city directory routes
+    - `sql/routes.py` - SQL explorer routes
+    - `kv/routes.py` + `kv/repository.py` - Key-Value routes/data access
+    - `sb/routes.py` + `sb/repository.py` - Secondary Brain routes/data access
 - `templates/`
-  - `base.html` - shared production layout shell
-  - `login.html` - login page
-  - `cities.html` - city listing page
-  - `error.html` - generic service error page
+  - `shared/` - shared templates (`base.html`, `error.html`)
+  - `auth/` - auth templates
+  - `dashboard/` - dashboard templates
+  - `sql/` - SQL Explorer templates
+  - `kv/` - Key-Value templates
+  - `sb/` - Secondary Brain templates
+  - `legacy/` - city directory templates
 
 ## Authentication
 
@@ -52,6 +61,25 @@ Dashboard data source:
 Example dashboard records:
 - `item_key='kv'`, `item_value='KV Store'`, `category='dashboard'`
 - `item_key='sql'`, `item_value='SQL Explorer'`, `category='dashboard'`
+- `item_key='sb'`, `item_value='Secondary Brain'`, `category='dashboard'`
+
+## Secondary Brain (Protected)
+
+- `GET /sb` folder/file workspace
+- `GET/POST /sb/folder/new`, `GET/POST /sb/folder/<id>/edit`
+- `POST /sb/folder/<id>/delete` (move to trash), restore/purge from trash
+- `GET/POST /sb/file/new`, `GET/POST /sb/file/<id>/edit`, `GET /sb/file/<id>`
+- `POST /sb/file/<id>/autosave` (every 5s + blur in editor)
+- `POST /sb/file/<id>/delete` (move to trash), restore/purge from trash
+- Bidirectional file links: add/unlink from file editor
+
+Notes:
+- Editor preview is client-side markdown.
+- Read-mode rendering is server-side markdown with sanitization.
+- Folder delete moves full subtree and child files to trash.
+- Search in SB is by file title and tags.
+
+Schema SQL is provided in `sql/secondary_brain.sql`.
 
 ## SQL Explorer (Protected)
 

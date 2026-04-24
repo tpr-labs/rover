@@ -50,4 +50,4 @@ def register_auth_guard(app: Flask) -> None:
             return None
         if is_authenticated():
             return None
-        return redirect(url_for("login", next=request.full_path if request.query_string else request.path))
+        return redirect(url_for("auth.login", next=request.full_path if request.query_string else request.path))

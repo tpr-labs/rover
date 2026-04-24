@@ -1,0 +1,1 @@
+"""SQL Explorer project package."""

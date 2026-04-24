@@ -1,8 +1,8 @@
 from flask import Flask, render_template
 
-from .auth import configure_auth, register_auth_guard
-from .config import configure_app
-from .routes import register_routes
+from .core.auth import configure_auth, register_auth_guard
+from .core.config import configure_app
+from .projects import register_project_blueprints
 
 
 def create_app() -> Flask:
@@ -10,11 +10,11 @@ def create_app() -> Flask:
     configure_app(app)
     configure_auth(app)
     register_auth_guard(app)
-    register_routes(app)
+    register_project_blueprints(app)
 
     @app.errorhandler(Exception)
     def handle_exception(err):
         app.logger.exception("Unhandled exception occurred")
-        return render_template("error.html"), 500
+        return render_template("shared/error.html"), 500
 
     return app

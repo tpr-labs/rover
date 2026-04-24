@@ -1,0 +1,23 @@
+{% extends "shared/base.html" %}
+{% block title %}{{ 'New Folder' if mode == 'create' else 'Edit Folder' }} · Rover{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0">{{ 'Create Folder' if mode == 'create' else 'Edit Folder' }}</h1>
+  <a class="btn btn-outline-secondary" href="{{ url_for('sb.sb_home') }}">Back</a>
+</div>
+{% if error_message %}<div class="alert alert-danger">{{ error_message }}</div>{% endif %}
+<div class="card shadow-sm border-0"><div class="card-body">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <div class="mb-3"><label class="form-label">Folder Name</label>
+      <input class="form-control" name="folder_name" maxlength="255" required value="{{ folder.folder_name if folder else '' }}" />
+    </div>
+    <div class="mb-3"><label class="form-label">Parent Folder</label>
+      <select class="form-select" name="parent_folder_id"><option value="">(Root)</option>
+      {% for f in all_folders %}<option value="{{ f.folder_id }}" {% if parent_folder_id == f.folder_id %}selected{% endif %}>{{ f.folder_name }}</option>{% endfor %}
+      </select>
+    </div>
+    <button class="btn btn-primary" type="submit">{{ 'Create' if mode == 'create' else 'Update' }}</button>
+  </form>
+</div></div>
+{% endblock %}

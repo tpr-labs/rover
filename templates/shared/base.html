@@ -16,13 +16,14 @@
       <span class="navbar-brand fw-semibold">Rover</span>
       {% if is_authenticated %}
       <div class="d-flex align-items-center gap-2">
-        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('dashboard') }}">Dashboard</a>
-        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('sql_page') }}">SQL Explorer</a>
-        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('kv_list') }}">Key-Value</a>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('core.dashboard') }}">Dashboard</a>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('sb.sb_home') }}">Secondary Brain</a>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('sql.sql_page') }}">SQL Explorer</a>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('kv.kv_list') }}">Key-Value</a>
       </div>
       {% endif %}
       {% if is_authenticated %}
-      <form method="post" action="{{ url_for('logout') }}" class="m-0">
+      <form method="post" action="{{ url_for('auth.logout') }}" class="m-0">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
         <button type="submit" class="btn btn-outline-secondary btn-sm">Logout</button>
       </form>

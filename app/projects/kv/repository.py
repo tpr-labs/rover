@@ -3,7 +3,7 @@ import re
 
 import oracledb
 
-from .db import get_db_connection
+from app.core.db import get_db_connection
 
 
 KEY_RE = re.compile(r"^[A-Za-z0-9_:\-.]{1,120}$")
