@@ -37,4 +37,19 @@ This app uses a **single shared login token** with Flask session authentication.
   - `GET/POST /login`
   - `POST /logout`
 
+## SQL Explorer (Protected)
+
+- `GET /sql` - SQL editor page
+- `POST /sql/execute` - execute query and render result table
+
+Safety rules:
+- Always single-statement only.
+- Operation whitelist only: `SELECT, INSERT, UPDATE, DELETE, TRUNCATE, DROP, CREATE`
+- Write operations are allowed only if both are true:
+  - `APP_ENV=dev`
+  - `SQL_UI_WRITE_ENABLED=true` (default is `false`)
+- All statements are restricted to tables listed in:
+  - `SQL_UI_ALLOWED_TABLES` (comma-separated, required for SQL explorer)
+- `SELECT` results are row-limited by `SQL_UI_MAX_ROWS` (default `100`, max `500`)
+
 Unauthenticated access to protected pages redirects to `/login`.
