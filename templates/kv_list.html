@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Key-Value Store · Rover{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0">Key-Value Store</h1>
+  <a class="btn btn-primary" href="{{ url_for('kv_new_page') }}">Create New</a>
+</div>
+
+<div class="card shadow-sm border-0 mb-3">
+  <div class="card-body">
+    <form method="get" class="row g-2">
+      <div class="col-md-5">
+        <input class="form-control" name="q" placeholder="Search key/value/info" value="{{ search }}" />
+      </div>
+      <div class="col-md-4">
+        <input class="form-control" name="category" placeholder="Category" value="{{ category }}" />
+      </div>
+      <div class="col-md-3 d-grid">
+        <button class="btn btn-outline-primary" type="submit">Search</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped table-hover mb-0">
+        <thead class="table-dark">
+          <tr>
+            <th>Key</th>
+            <th>Value</th>
+            <th>Category</th>
+            <th>Updated</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for item in items %}
+          <tr>
+            <td class="fw-semibold">{{ item.item_key }}</td>
+            <td>{{ item.item_value }}</td>
+            <td>{{ item.category or '-' }}</td>
+            <td>{{ item.updated_at }}</td>
+            <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('kv_detail', item_key=item.item_key) }}">View</a></td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="text-center text-muted py-4">No records found.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mt-3">
+  <span class="text-muted">Page {{ page }} of {{ total_pages }}</span>
+  <div class="d-flex gap-2">
+    {% if page > 1 %}
+    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('kv_list', q=search, category=category, page=page-1) }}">Previous</a>
+    {% endif %}
+    {% if page < total_pages %}
+    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('kv_list', q=search, category=category, page=page+1) }}">Next</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

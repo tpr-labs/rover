@@ -4,6 +4,7 @@ from flask import jsonify, redirect, render_template, request, session, url_for
 
 from .auth import get_login_token, get_safe_next_url, is_valid_csrf
 from .db import get_db_connection, get_schema, execute_sql_explorer_query
+from .keyvalue_repo import create_item, delete_item, get_item, list_items, update_item
 
 
 def sql_write_mode_enabled() -> bool:
@@ -131,3 +132,81 @@ def register_routes(app):
                 error_message=str(exc),
                 write_mode_enabled=sql_write_mode_enabled(),
             ), 400
+
+    @app.get("/kv")
+    def kv_list():
+        search = request.args.get("q", "")
+        category = request.args.get("category", "")
+        page = max(1, int(request.args.get("page", "1")))
+        page_size = 20
+
+        items, total_pages = list_items(search=search, category=category, page=page, page_size=page_size)
+        return render_template(
+            "kv_list.html",
+            items=items,
+            search=search,
+            category=category,
+            page=page,
+            total_pages=total_pages,
+        )
+
+    @app.get("/kv/new")
+    def kv_new_page():
+        return render_template("kv_form.html", mode="create", item=None, error_message=None)
+
+    @app.post("/kv/new")
+    def kv_new_submit():
+        if not is_valid_csrf(request.form.get("csrf_token")):
+            return render_template("kv_form.html", mode="create", item=None, error_message="Session expired. Please try again."), 400
+
+        item = {
+            "item_key": (request.form.get("item_key") or "").strip(),
+            "item_value": request.form.get("item_value") or "",
+            "additional_info": request.form.get("additional_info") or "",
+            "category": request.form.get("category") or "",
+        }
+        try:
+            create_item(item["item_key"], item["item_value"], item["additional_info"], item["category"])
+            return redirect(url_for("kv_detail", item_key=item["item_key"], msg="created"))
+        except ValueError as exc:
+            return render_template("kv_form.html", mode="create", item=item, error_message=str(exc)), 400
+
+    @app.get("/kv/<path:item_key>")
+    def kv_detail(item_key: str):
+        item = get_item(item_key)
+        if not item:
+            return render_template("error.html"), 404
+        return render_template("kv_detail.html", item=item, message=request.args.get("msg"))
+
+    @app.get("/kv/<path:item_key>/edit")
+    def kv_edit_page(item_key: str):
+        item = get_item(item_key)
+        if not item:
+            return render_template("error.html"), 404
+        return render_template("kv_form.html", mode="edit", item=item, error_message=None)
+
+    @app.post("/kv/<path:item_key>/edit")
+    def kv_edit_submit(item_key: str):
+        if not is_valid_csrf(request.form.get("csrf_token")):
+            return render_template("error.html"), 400
+
+        item = {
+            "item_key": item_key,
+            "item_value": request.form.get("item_value") or "",
+            "additional_info": request.form.get("additional_info") or "",
+            "category": request.form.get("category") or "",
+        }
+        try:
+            ok = update_item(item_key, item["item_value"], item["additional_info"], item["category"])
+            if not ok:
+                return render_template("error.html"), 404
+            return redirect(url_for("kv_detail", item_key=item_key, msg="updated"))
+        except ValueError as exc:
+            return render_template("kv_form.html", mode="edit", item=item, error_message=str(exc)), 400
+
+    @app.post("/kv/<path:item_key>/delete")
+    def kv_delete(item_key: str):
+        if not is_valid_csrf(request.form.get("csrf_token")):
+            return render_template("error.html"), 400
+        delete_item(item_key)
+        return redirect(url_for("kv_list"))

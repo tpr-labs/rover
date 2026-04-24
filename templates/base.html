@@ -18,6 +18,7 @@
       <div class="d-flex align-items-center gap-2">
         <a class="btn btn-sm btn-outline-primary" href="{{ url_for('cities') }}">Cities</a>
         <a class="btn btn-sm btn-outline-primary" href="{{ url_for('sql_page') }}">SQL Explorer</a>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('kv_list') }}">Key-Value</a>
       </div>
       {% endif %}
       {% if is_authenticated %}

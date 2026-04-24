@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}SQL Explorer · Rover{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0">SQL Explorer</h1>
+  {% if write_mode_enabled %}
+  <span class="badge text-bg-danger">DEV WRITE MODE</span>
+  {% else %}
+  <span class="badge text-bg-warning">Read-only (SELECT only)</span>
+  {% endif %}
+</div>
+
+<div class="card shadow-sm border-0 mb-3">
+  <div class="card-body">
+    <form method="post" action="{{ url_for('sql_execute') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <div class="mb-3">
+        <label class="form-label">SQL Query</label>
+        <textarea class="form-control font-monospace" name="query" rows="7" required>{{ query_text }}</textarea>
+      </div>
+      <button class="btn btn-primary" type="submit">Execute</button>
+    </form>
+  </div>
+</div>
+
+{% if error_message %}
+<div class="alert alert-danger" role="alert">{{ error_message }}</div>
+{% endif %}
+
+{% if result_message %}
+<div class="alert alert-success" role="alert">{{ result_message }}</div>
+{% endif %}
+
+{% if columns and rows %}
+<div class="card shadow-sm border-0">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped table-hover mb-0 align-middle">
+        <thead class="table-dark">
+          <tr>
+            {% for col in columns %}
+            <th>{{ col }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            {% for col in columns %}
+            <td>{{ row[col] }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% elif columns and not rows %}
+<div class="alert alert-info" role="alert">Query executed successfully, but returned no rows.</div>
+{% endif %}
+{% endblock %}

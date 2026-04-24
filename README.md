@@ -53,3 +53,29 @@ Safety rules:
 - `SELECT` results are row-limited by `SQL_UI_MAX_ROWS` (default `100`, max `500`)
 
 Unauthenticated access to protected pages redirects to `/login`.
+
+## Key-Value Store CRUD (Protected)
+
+Table expected: `kv_store`
+
+Columns used by app:
+- `item_key` (PK, unique)
+- `item_value` (`VARCHAR2(500)`, required)
+- `additional_info` (`VARCHAR2(4000)`, optional)
+- `category` (`VARCHAR2(100)`, optional)
+- `created_at` (auto)
+- `updated_at` (auto)
+
+Pages/endpoints:
+- `GET /kv` list + search + category filter + pagination
+- `GET/POST /kv/new` create
+- `GET /kv/<item_key>` detail
+- `GET/POST /kv/<item_key>/edit` update
+- `POST /kv/<item_key>/delete` delete
+
+Behavior:
+- Duplicate key insert shows user-friendly error (`Key already exists`).
+- Validation limits enforced in app layer:
+  - key max 120 chars (safe pattern)
+  - value max 500 chars
+  - additional info max 4000 chars
