@@ -4,7 +4,7 @@ from flask import jsonify, redirect, render_template, request, session, url_for
 
 from .auth import get_login_token, get_safe_next_url, is_valid_csrf
 from .db import get_db_connection, get_schema, execute_sql_explorer_query
-from .keyvalue_repo import create_item, deactivate_item, get_item, list_items, restore_item, update_item
+from .keyvalue_repo import create_item, deactivate_item, get_item, list_dashboard_projects, list_items, restore_item, update_item
 
 
 def sql_write_mode_enabled() -> bool:
@@ -52,7 +52,12 @@ def register_routes(app):
 
     @app.get("/")
     def home():
-        return redirect(url_for("cities"))
+        return redirect(url_for("dashboard"))
+
+    @app.get("/dashboard")
+    def dashboard():
+        projects = list_dashboard_projects()
+        return render_template("dashboard.html", projects=projects)
 
     @app.get("/cities")
     def cities():

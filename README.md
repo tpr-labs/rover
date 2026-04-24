@@ -32,10 +32,26 @@ This app uses a **single shared login token** with Flask session authentication.
 ### Behavior
 
 - Public route: `GET /health`
-- Protected routes: `GET /`, `GET /cities`
+- Protected routes: `GET /`, `GET /dashboard`, `GET /cities`
 - Auth routes:
   - `GET/POST /login`
   - `POST /logout`
+
+## Dashboard (Protected)
+
+- `GET /dashboard` - shows project cards dynamically from `kv_store`
+- `GET /` defaults to dashboard after login
+
+Dashboard data source:
+- `kv_store` rows with:
+  - `category='dashboard'`
+  - `is_active='Y'`
+- `item_key` is used as slug/path (`/<item_key>`)
+- `item_value` is used as display title
+
+Example dashboard records:
+- `item_key='kv'`, `item_value='KV Store'`, `category='dashboard'`
+- `item_key='sql'`, `item_value='SQL Explorer'`, `category='dashboard'`
 
 ## SQL Explorer (Protected)
 

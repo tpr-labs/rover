@@ -188,3 +188,30 @@ def restore_item(item_key: str) -> bool:
             cur.execute(sql, {"item_key": item_key})
             conn.commit()
             return cur.rowcount > 0
+
+
+def list_dashboard_projects() -> list[dict]:
+    sql = """
+        SELECT item_key, item_value
+        FROM kv_store
+        WHERE category = 'dashboard' AND is_active = 'Y'
+        ORDER BY item_value
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql)
+            rows = cur.fetchall()
+
+    projects = []
+    for key, value in rows:
+        slug = (key or "").strip().lower()
+        if not slug:
+            continue
+        projects.append(
+            {
+                "key": key,
+                "title": value or key,
+                "path": f"/{slug}",
+            }
+        )
+    return projects
