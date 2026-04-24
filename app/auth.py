@@ -1,0 +1,53 @@
+import hmac
+import os
+import secrets
+
+from flask import Flask, redirect, request, session, url_for
+
+
+def get_login_token() -> str:
+    token = os.environ.get("APP_LOGIN_TOKEN")
+    if not token:
+        raise RuntimeError("Server is not fully configured")
+    return token
+
+
+def is_authenticated() -> bool:
+    return bool(session.get("authenticated"))
+
+
+def get_safe_next_url() -> str:
+    next_url = request.args.get("next") or request.form.get("next") or "/"
+    if isinstance(next_url, str) and next_url.startswith("/") and not next_url.startswith("//"):
+        return next_url
+    return "/"
+
+
+def get_or_create_csrf_token() -> str:
+    token = session.get("csrf_token")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["csrf_token"] = token
+    return token
+
+
+def is_valid_csrf(submitted: str | None) -> bool:
+    expected = session.get("csrf_token")
+    return bool(expected and submitted and hmac.compare_digest(expected, submitted))
+
+
+def configure_auth(app: Flask) -> None:
+    @app.context_processor
+    def inject_auth_context():
+        return {"csrf_token": get_or_create_csrf_token(), "is_authenticated": is_authenticated()}
+
+
+def register_auth_guard(app: Flask) -> None:
+    @app.before_request
+    def require_authentication():
+        public_paths = {"/health", "/login"}
+        if request.path in public_paths or request.path.startswith("/static/"):
+            return None
+        if is_authenticated():
+            return None
+        return redirect(url_for("login", next=request.full_path if request.query_string else request.path))
