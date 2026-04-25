@@ -234,7 +234,11 @@ def process_pending_transactions(limit: int = 50) -> dict:
         raise ValueError("google-genai package is required for FT LLM processing") from exc
 
     api_key = repository.get_google_llm_api_key()
-    model_name = repository.get_ft_model_name()
+    base_model_name = repository.get_ft_model_name()
+    fast_model_name = repository.get_ft_fast_model_name()
+    model_name = fast_model_name or base_model_name
+    effective_limit = min(max(1, int(limit)), repository.get_ft_batch_limit(default=20))
+    persist_delay_ms = repository.get_ft_persist_delay_ms(default=0)
     accounts = repository.account_context_payload()
     try:
         # Force Gemini Developer API mode (not Vertex AI) for API-key auth.
@@ -273,7 +277,7 @@ def process_pending_transactions(limit: int = 50) -> dict:
             "http_status": 200,
         }
 
-    pending = repository.list_pending_transactions(limit=limit)
+    pending = repository.list_pending_transactions(limit=effective_limit)
     processed = 0
     failed = 0
     cached = 0
@@ -380,7 +384,8 @@ def process_pending_transactions(limit: int = 50) -> dict:
                 repository.mark_transaction_failed(tx_id)
                 batch_outcomes.append({"transaction_id": tx_id, "status": "FAILED", "error": error_message})
 
-            time.sleep(0.1)
+            if persist_delay_ms > 0:
+                time.sleep(persist_delay_ms / 1000.0)
 
         # One audit row per external batch call (instead of per transaction).
         batch_request_hash = repository.llm_cache_key(
@@ -410,4 +415,7 @@ def process_pending_transactions(limit: int = 50) -> dict:
         "failed": failed,
         "cache_hits": cached,
         "model": model_name,
+        "base_model": base_model_name,
+        "fast_model": fast_model_name,
+        "effective_limit": effective_limit,
     }

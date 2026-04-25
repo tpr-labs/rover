@@ -13,6 +13,9 @@ FT_DISABLE_LLM_TOGGLE = "FT_DISABLE_LLM_PROCESSING"
 FT_ACCOUNTS_KV_KEY = "ft_accounts"
 GOOGLE_API_KEY_KV = "GOOGLE_LLM_API_KEY"
 FT_MODEL_KV = "FT_LLM_MODEL"
+FT_FAST_MODEL_KV = "FT_LLM_MODEL_FAST"
+FT_BATCH_LIMIT_KV = "FT_LLM_BATCH_LIMIT"
+FT_PERSIST_DELAY_MS_KV = "FT_LLM_PERSIST_DELAY_MS"
 
 
 def _to_text(value: Any) -> str:
@@ -159,6 +162,31 @@ def get_ft_model_name() -> str:
     additional_info, item_value = _get_kv_pair(FT_MODEL_KV)
     # For model config, prefer item_value (e.g. gemma-3-27b-it).
     return item_value or additional_info or "gemma-3-27b-it"
+
+
+def _get_int_kv(item_key: str, default: int, min_value: int, max_value: int) -> int:
+    raw = _get_kv_value(item_key)
+    if raw is None:
+        return default
+    try:
+        val = int(str(raw).strip())
+    except (TypeError, ValueError):
+        return default
+    return max(min_value, min(max_value, val))
+
+
+def get_ft_fast_model_name() -> str | None:
+    additional_info, item_value = _get_kv_pair(FT_FAST_MODEL_KV)
+    model = (item_value or additional_info or "").strip()
+    return model or None
+
+
+def get_ft_batch_limit(default: int = 20) -> int:
+    return _get_int_kv(FT_BATCH_LIMIT_KV, default=default, min_value=1, max_value=100)
+
+
+def get_ft_persist_delay_ms(default: int = 0) -> int:
+    return _get_int_kv(FT_PERSIST_DELAY_MS_KV, default=default, min_value=0, max_value=2000)
 
 
 def list_accounts(active_only: bool = False) -> list[dict]:
