@@ -691,6 +691,12 @@ def get_finance_summary() -> dict:
         ORDER BY t.tx_date DESC, t.updated_at DESC, t.transaction_id DESC
         FETCH FIRST 10 ROWS ONLY
     """
+    llm_counts_sql = """
+        SELECT
+            COUNT(*) AS total_calls,
+            SUM(CASE WHEN TRUNC(created_at) = TRUNC(SYSTIMESTAMP) THEN 1 ELSE 0 END) AS today_calls
+        FROM ft_llm_calls
+    """
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql)
@@ -709,11 +715,15 @@ def get_finance_summary() -> dict:
                 }
                 for r in cur.fetchall()
             ]
+            cur.execute(llm_counts_sql)
+            llm_row = cur.fetchone() or (0, 0)
     return {
         "total_income": float(row[0] or 0),
         "total_expense": float(row[1] or 0),
         "net_amount": float(row[2] or 0),
         "pending_count": int(row[3] or 0),
+        "llm_calls_total": int(llm_row[0] or 0),
+        "llm_calls_today": int(llm_row[1] or 0),
         "recent": recent,
     }
 

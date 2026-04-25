@@ -45,7 +45,7 @@
             <td class="fw-semibold">{{ item.call_id }}</td>
             <td>{{ item.transaction_id or '-' }}</td>
             <td><span class="badge text-bg-secondary">{{ item.model_name or '-' }}</span></td>
-            <td>{{ item.latency_ms }} ms</td>
+            <td>{{ '%.2f'|format((item.latency_ms or 0) / 1000) }} s</td>
             <td>{{ item.total_tokens }} <span class="text-muted small">(p:{{ item.prompt_tokens }}, c:{{ item.completion_tokens }})</span></td>
             <td>{% if item.cache_hit == 'Y' %}<span class="badge text-bg-info">Hit</span>{% else %}<span class="badge text-bg-secondary">Miss</span>{% endif %}</td>
             <td>{% if item.error_message %}<span class="text-danger">Failed</span>{% else %}<span class="text-success">OK</span>{% endif %}</td>

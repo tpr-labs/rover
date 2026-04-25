@@ -14,7 +14,7 @@
   <div class="col-12 col-md-3"><div class="card"><div class="card-body"><div class="text-muted small">Total Income</div><div class="h5 mb-0 text-success">{{ '%.2f'|format(summary.total_income) }}</div></div></div></div>
   <div class="col-12 col-md-3"><div class="card"><div class="card-body"><div class="text-muted small">Total Expense</div><div class="h5 mb-0 text-danger">{{ '%.2f'|format(summary.total_expense) }}</div></div></div></div>
   <div class="col-12 col-md-3"><div class="card"><div class="card-body"><div class="text-muted small">Net</div><div class="h5 mb-0">{{ '%.2f'|format(summary.net_amount) }}</div></div></div></div>
-  <div class="col-12 col-md-3"><div class="card"><div class="card-body"><div class="text-muted small">Pending</div><div class="h5 mb-0">{{ summary.pending_count }}</div></div></div></div>
+  <div class="col-12 col-md-3"><div class="card"><div class="card-body"><div class="text-muted small">Pending</div><div class="h5 mb-0">{{ summary.pending_count }}</div><div class="small text-muted mt-1">LLM today: {{ summary.llm_calls_today }}</div><div class="small text-muted">LLM total: {{ summary.llm_calls_total }}</div></div></div></div>
 </div>
 
 <div class="card shadow-sm mb-3">
