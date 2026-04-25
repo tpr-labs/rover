@@ -1,0 +1,77 @@
+{% extends "shared/base.html" %}
+{% block title %}Uploads · Rover{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0">Uploads</h1>
+  <a class="btn btn-primary {% if not upload_ready %}disabled{% endif %}" href="{{ url_for('uploads.uploads_new_page') }}">Upload File</a>
+</div>
+
+{% if not upload_ready %}
+<div class="alert alert-warning">{{ upload_status_message }}</div>
+{% endif %}
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <form method="get" class="row g-2">
+      <div class="col-md-9">
+        <input class="form-control" name="q" placeholder="Search title/file/notes" value="{{ search }}" />
+      </div>
+      <div class="col-md-3 d-grid">
+        <button class="btn btn-outline-primary" type="submit">Search</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped table-hover mb-0">
+        <thead class="table-dark">
+          <tr>
+            <th>Title</th>
+            <th>File</th>
+            <th>Size</th>
+            <th>Updated</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for item in items %}
+          <tr>
+            <td class="fw-semibold">{{ item.title }}</td>
+            <td>{{ item.original_file_name }}</td>
+            <td>{{ item.size_bytes }}</td>
+            <td>{{ item.updated_at_human }}</td>
+            <td class="text-end">
+              <div class="d-inline-flex gap-1">
+                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('uploads.uploads_detail', upload_id=item.upload_id) }}">View</a>
+                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('uploads.uploads_edit_page', upload_id=item.upload_id) }}">Edit</a>
+                <form method="post" action="{{ url_for('uploads.uploads_delete', upload_id=item.upload_id) }}" onsubmit="return confirm('Delete this upload from DB and OCI object storage?');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                  <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="text-center text-muted py-4">No uploads found.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mt-3">
+  <span class="text-muted">Page {{ page }} of {{ total_pages }}</span>
+  <div class="d-flex gap-2">
+    {% if page > 1 %}
+    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('uploads.uploads_list', q=search, page=page-1) }}">Previous</a>
+    {% endif %}
+    {% if page < total_pages %}
+    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('uploads.uploads_list', q=search, page=page+1) }}">Next</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
