@@ -1,4 +1,5 @@
 import bleach
+import importlib
 import markdown
 from datetime import date, datetime
 from flask import Blueprint, jsonify, redirect, render_template, request, url_for
@@ -71,7 +72,17 @@ def render_markdown_safely(content_md: str) -> str:
     else:
         content_md = str(content_md)
 
-    raw_html = markdown.markdown(content_md, extensions=["extra", "sane_lists"])
+    extensions = ["extra", "sane_lists", "nl2br"]
+    optional_exts = ["pymdownx.tilde", "pymdownx.tasklist", "pymdownx.superfences"]
+    for ext in optional_exts:
+        module_name = ext.split(".", 1)[0]
+        try:
+            importlib.import_module(module_name)
+            extensions.append(ext)
+        except ModuleNotFoundError:
+            continue
+
+    raw_html = markdown.markdown(content_md, extensions=extensions)
     allowed_tags = set(bleach.sanitizer.ALLOWED_TAGS).union(
         {
             "p",
@@ -95,9 +106,22 @@ def render_markdown_safely(content_md: str) -> str:
             "tr",
             "th",
             "td",
+            "del",
+            "input",
         }
     )
-    return bleach.clean(raw_html, tags=allowed_tags, attributes={"a": ["href", "title", "target"], "code": ["class"]}, strip=True)
+    return bleach.clean(
+        raw_html,
+        tags=allowed_tags,
+        attributes={
+            "a": ["href", "title", "target"],
+            "code": ["class"],
+            "input": ["type", "checked", "disabled"],
+            "ul": ["class"],
+            "li": ["class"],
+        },
+        strip=True,
+    )
 
 
 def _build_breadcrumb(folder_id: int | None) -> list[dict]:

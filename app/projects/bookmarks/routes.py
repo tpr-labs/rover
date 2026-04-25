@@ -1,6 +1,6 @@
 import re
 from datetime import date, datetime
-from urllib.parse import unquote, urljoin, urlparse
+from urllib.parse import parse_qs, unquote, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -93,6 +93,22 @@ def _extract_title_from_url(url: str) -> str | None:
             base -= 10
         return base
 
+    def _clean_youtube_url(raw_url: str) -> str:
+        parsed = urlparse(raw_url)
+        host = (parsed.netloc or "").lower()
+        if host.startswith("www."):
+            host = host[4:]
+
+        video_id = None
+        if host in {"youtube.com", "m.youtube.com"}:
+            video_id = (parse_qs(parsed.query).get("v") or [None])[0]
+        elif host == "youtu.be":
+            video_id = parsed.path.strip("/") or None
+
+        if video_id:
+            return f"https://www.youtube.com/watch?v={video_id}"
+        return raw_url
+
     def _fetch(target_url: str):
         try:
             resp = requests.get(target_url, headers=headers, timeout=(4, 8), allow_redirects=True)
@@ -105,6 +121,34 @@ def _extract_title_from_url(url: str) -> str | None:
             return {"url": resp.url, "html": html}
         except requests.RequestException:
             return None
+
+    def _youtube_title(target_url: str) -> str | None:
+        normalized = _clean_youtube_url(target_url)
+        parsed = urlparse(normalized)
+        host = (parsed.netloc or "").lower()
+        if host.startswith("www."):
+            host = host[4:]
+        if host not in {"youtube.com", "m.youtube.com", "youtu.be"}:
+            return None
+
+        oembed_url = "https://www.youtube.com/oembed"
+        try:
+            resp = requests.get(
+                oembed_url,
+                params={"url": normalized, "format": "json"},
+                headers=headers,
+                timeout=(4, 8),
+            )
+            if not resp.ok:
+                return None
+            payload = resp.json()
+            return _clean(payload.get("title"))
+        except (requests.RequestException, ValueError, TypeError):
+            return None
+
+    yt_title = _youtube_title(url)
+    if yt_title:
+        return yt_title
 
     page = _fetch(url)
     if not page:
