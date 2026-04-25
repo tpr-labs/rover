@@ -134,6 +134,22 @@
       border-color: #6b7280;
     }
 
+    .dropdown-menu {
+      background: #1a1e24;
+      border-color: #3b414b;
+    }
+    .dropdown-item {
+      color: var(--rv-text);
+    }
+    .dropdown-item:hover,
+    .dropdown-item:focus {
+      color: #fff;
+      background: #2a3140;
+    }
+    .dropdown-divider {
+      border-top-color: #3b414b;
+    }
+
     .navbar-toggler:focus {
       box-shadow: 0 0 0 .2rem rgba(13,110,253,.25);
     }
@@ -207,6 +223,20 @@
       <div class="collapse navbar-collapse" id="rvNav">
       {% if is_authenticated %}
       <div class="ms-auto d-flex align-items-center gap-2 mt-3 mt-lg-0 rv-mobile-stack">
+        <div class="dropdown">
+          <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fa-solid fa-link me-1"></i>Shortcuts
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            {% for sc in nav_shortcuts %}
+            <li><a class="dropdown-item" href="{{ sc.path }}">{{ sc.title }}</a></li>
+            {% else %}
+            <li><span class="dropdown-item-text text-muted">No active shortcuts</span></li>
+            {% endfor %}
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{{ url_for('shortcuts.shortcuts_list') }}"><i class="fa-solid fa-gear me-1"></i>Manage shortcuts</a></li>
+          </ul>
+        </div>
         <form method="post" action="{{ url_for('auth.logout') }}" class="m-0">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
           <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-right-from-bracket me-1"></i>Logout</button>

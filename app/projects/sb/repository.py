@@ -642,6 +642,26 @@ def get_graph_snapshot(scope: str = "subtree", root_folder_id: int | None = None
                 }
             )
 
+    root_folder_ids = [f["folder_id"] for f in folders if f.get("parent_folder_id") is None]
+    if root_folder_ids:
+        nodes.append(
+            {
+                "id": "root:all",
+                "kind": "root_hub",
+                "name": "Root",
+                "created_at": None,
+                "updated_at": None,
+            }
+        )
+        for folder_id in root_folder_ids:
+            links.append(
+                {
+                    "source": "root:all",
+                    "target": f"folder:{folder_id}",
+                    "kind": "root_hub_link",
+                }
+            )
+
     for folder_id, folder_files in files_by_folder.items():
         for file in folder_files:
             links.append(

@@ -178,6 +178,8 @@ def sb_graph_data():
         node["updated_at_human"] = _humanize_timestamp(node.get("updated_at"))
         if node.get("kind") == "folder":
             node["go_to_url"] = url_for("sb.sb_home", folder_id=node.get("folder_id"))
+        elif node.get("kind") == "root_hub":
+            node["go_to_url"] = None
         else:
             node["go_to_url"] = url_for("sb.sb_file_view", file_id=node.get("file_id"))
 

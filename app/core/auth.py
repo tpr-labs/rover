@@ -39,7 +39,21 @@ def is_valid_csrf(submitted: str | None) -> bool:
 def configure_auth(app: Flask) -> None:
     @app.context_processor
     def inject_auth_context():
-        return {"csrf_token": get_or_create_csrf_token(), "is_authenticated": is_authenticated()}
+        authenticated = is_authenticated()
+        nav_shortcuts = []
+        if authenticated:
+            try:
+                from app.projects.shortcuts.repository import list_nav_shortcuts
+
+                nav_shortcuts = list_nav_shortcuts()
+            except Exception:
+                nav_shortcuts = []
+
+        return {
+            "csrf_token": get_or_create_csrf_token(),
+            "is_authenticated": authenticated,
+            "nav_shortcuts": nav_shortcuts,
+        }
 
 
 def register_auth_guard(app: Flask) -> None:
