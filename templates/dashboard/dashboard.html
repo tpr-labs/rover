@@ -1,33 +1,27 @@
 {% extends "shared/base.html" %}
 {% block title %}Dashboard · Rover{% endblock %}
 {% block content %}
+<style>
+  .project-card-icon {
+    font-size: 1.9rem;
+    line-height: 1;
+    color: #9ec3ff;
+    margin-bottom: .65rem;
+  }
+</style>
+
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h2 class="h6 mb-0 text-uppercase text-muted">Projects</h2>
-  <span class="badge text-bg-primary">{{ projects|length + 1 }} total</span>
+  <span class="badge text-bg-primary">{{ projects|length }} total</span>
 </div>
 
 <div class="row g-3">
-  <div class="col-12 col-md-6 col-lg-4">
-    <div class="card h-100 shadow-sm">
-      <div class="card-body d-flex flex-column">
-        <h3 class="h6 mb-1 text-light">DB</h3>
-        <p class="text-muted small mb-3">Database connection status</p>
-        <div class="mt-auto">
-          {% if db_connected %}
-          <span class="badge text-bg-success">{{ db_status_label }}</span>
-          {% else %}
-          <span class="badge text-bg-danger">{{ db_status_label }}</span>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-  </div>
-
   {% for p in projects %}
   <div class="col-12 col-md-6 col-lg-4">
     <a href="{{ p.path }}" class="text-decoration-none">
       <div class="card h-100 shadow-sm">
         <div class="card-body d-flex flex-column">
+          <div class="project-card-icon"><i class="{{ p.icon_class or 'fa-solid fa-grid-2' }}"></i></div>
           <h3 class="h6 mb-1 text-light">{{ p.title }}</h3>
           <p class="text-muted small mb-3">/{{ p.key }}</p>
           <div class="mt-auto small text-primary">Open project →</div>

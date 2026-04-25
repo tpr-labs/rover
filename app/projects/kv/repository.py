@@ -1,5 +1,6 @@
 import math
 import re
+import json
 
 import oracledb
 
@@ -7,6 +8,7 @@ from app.core.db import get_db_connection
 
 
 KEY_RE = re.compile(r"^[A-Za-z0-9_:\-.]{1,120}$")
+ICON_CLASS_RE = re.compile(r"^[A-Za-z0-9 _\-]{1,80}$")
 
 
 def _normalized_category(category: str | None) -> str:
@@ -243,26 +245,42 @@ def delete_item(item_key: str) -> bool:
 
 def list_dashboard_projects() -> list[dict]:
     sql = """
-        SELECT item_key, item_value
+        SELECT item_key, item_value, additional_info
         FROM kv_store
         WHERE category = 'dashboard' AND is_active = 'Y'
         ORDER BY item_value
     """
+    default_icon = "fa-solid fa-grid-2"
+
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql)
             rows = cur.fetchall()
 
     projects = []
-    for key, value in rows:
+    for key, value, additional_info in rows:
         slug = (key or "").strip().lower()
         if not slug:
             continue
+
+        icon_class = default_icon
+        metadata_raw = (additional_info or "").strip()
+        if metadata_raw:
+            try:
+                metadata = json.loads(metadata_raw)
+                if isinstance(metadata, dict):
+                    candidate = str(metadata.get("icon") or "").strip()
+                    if candidate and ICON_CLASS_RE.fullmatch(candidate):
+                        icon_class = candidate
+            except (json.JSONDecodeError, TypeError, ValueError):
+                icon_class = default_icon
+
         projects.append(
             {
                 "key": key,
                 "title": value or key,
                 "path": f"/{slug}",
+                "icon_class": icon_class,
             }
         )
     return projects

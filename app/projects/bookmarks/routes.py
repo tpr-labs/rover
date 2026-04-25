@@ -5,10 +5,17 @@ from urllib.parse import unquote, urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 
-from flask import Blueprint, redirect, render_template, request, url_for
+from flask import Blueprint, jsonify, redirect, render_template, request, url_for
 
 from app.core.auth import is_valid_csrf
-from .repository import create_bookmark, delete_bookmark, get_bookmark, list_bookmarks, update_bookmark
+from .repository import (
+    create_bookmark,
+    delete_bookmark,
+    get_bookmark,
+    list_bookmarks,
+    switch_bookmark_starred,
+    update_bookmark,
+)
 
 bookmarks_bp = Blueprint("bookmarks", __name__)
 
@@ -188,6 +195,7 @@ def bookmarks_list():
     )
     for item in items:
         item["updated_at_human"] = _humanize_timestamp(item.get("updated_at"))
+        item["created_at_human"] = _humanize_timestamp(item.get("created_at"))
 
     return render_template(
         "bookmarks/list.html",
@@ -293,3 +301,18 @@ def bookmarks_delete(bookmark_id: int):
         return render_template("shared/error.html"), 400
     delete_bookmark(bookmark_id)
     return redirect(url_for("bookmarks.bookmarks_list", msg="deleted"))
+
+
+@bookmarks_bp.post("/bookmarks/<int:bookmark_id>/star")
+def bookmarks_switch_star(bookmark_id: int):
+    if not is_valid_csrf(request.form.get("csrf_token")):
+        return jsonify({"ok": False, "error": "Session expired"}), 400
+
+    desired = (request.form.get("starred") or "").strip()
+    if desired not in {"0", "1"}:
+        return jsonify({"ok": False, "error": "Invalid starred value"}), 400
+
+    ok = switch_bookmark_starred(bookmark_id, desired)
+    if not ok:
+        return jsonify({"ok": False, "error": "Bookmark not found"}), 404
+    return jsonify({"ok": True, "starred": int(desired)})

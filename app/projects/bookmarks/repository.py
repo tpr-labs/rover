@@ -213,3 +213,22 @@ def delete_bookmark(bookmark_id: int) -> bool:
             cur.execute(sql, {"bookmark_id": bookmark_id})
             conn.commit()
             return cur.rowcount > 0
+
+
+def switch_bookmark_starred(bookmark_id: int, desired_starred: int | str | None) -> bool:
+    sql = """
+        UPDATE bookmarks
+        SET starred = :starred
+        WHERE bookmark_id = :bookmark_id
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                sql,
+                {
+                    "bookmark_id": bookmark_id,
+                    "starred": _normalize_starred(desired_starred),
+                },
+            )
+            conn.commit()
+            return cur.rowcount > 0
