@@ -1,5 +1,6 @@
 import os
 import re
+import threading
 
 import oracledb
 
@@ -7,8 +8,11 @@ READ_ONLY_OPS = {"select"}
 DEV_WRITE_OPS = {"insert", "update", "delete", "truncate", "drop", "create"}
 ALL_ALLOWED_OPS = READ_ONLY_OPS | DEV_WRITE_OPS
 
+_POOL_LOCK = threading.Lock()
+_POOL = None
 
-def get_db_connection():
+
+def _create_pool():
     wallet_dir = os.environ.get("ORA_WALLET_DIR", "/tmp/wallet")
     db_user = os.environ.get("DB_USER")
     db_password = os.environ.get("DB_PASSWORD")
@@ -18,14 +22,31 @@ def get_db_connection():
     if not db_user or not db_password or not db_wallet_password:
         raise RuntimeError("Server is not fully configured")
 
-    return oracledb.connect(
+    pool_min = max(1, int(os.environ.get("DB_POOL_MIN", "2")))
+    pool_max = max(pool_min, int(os.environ.get("DB_POOL_MAX", "10")))
+    pool_inc = max(1, int(os.environ.get("DB_POOL_INC", "1")))
+
+    return oracledb.create_pool(
         user=db_user,
         password=db_password,
         dsn=db_dsn,
         config_dir=wallet_dir,
         wallet_location=wallet_dir,
         wallet_password=db_wallet_password,
+        min=pool_min,
+        max=pool_max,
+        increment=pool_inc,
+        getmode=oracledb.SPOOL_ATTRVAL_WAIT,
     )
+
+
+def get_db_connection():
+    global _POOL
+    if _POOL is None:
+        with _POOL_LOCK:
+            if _POOL is None:
+                _POOL = _create_pool()
+    return _POOL.acquire()
 
 
 def get_schema() -> str:

@@ -6,8 +6,41 @@
   <div class="d-flex gap-2">
     <a class="btn btn-outline-secondary" href="{{ url_for('sb.sb_home', folder_id=file.folder_id) }}">Back</a>
     <a class="btn btn-primary" href="{{ url_for('sb.sb_file_edit_page', file_id=file.file_id) }}">Edit</a>
+    {% if file.is_public != 'Y' %}
+    <form method="post" action="{{ url_for('sb.sb_file_set_public', file_id=file.file_id) }}" class="m-0">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <input type="hidden" name="make_public" value="1" />
+      <button class="btn btn-outline-primary" type="submit">Make Public</button>
+    </form>
+    {% endif %}
   </div>
 </div>
-<div class="card shadow-sm border-0 mb-3"><div class="card-body"><div class="text-muted mb-3"><small>Tags: {{ file.tags or '-' }}</small><br><small>Created: {{ file.created_at }} | Updated: {{ file.updated_at }}</small></div><hr><div class="markdown-body">{{ html_content|safe }}</div></div></div>
-<div class="card shadow-sm border-0"><div class="card-header bg-white fw-semibold">Linked Files</div><ul class="list-group list-group-flush">{% for l in links %}<li class="list-group-item"><a href="{{ url_for('sb.sb_file_view', file_id=l.file_id) }}" class="text-decoration-none">{{ l.title }}</a></li>{% else %}<li class="list-group-item text-muted">No linked files.</li>{% endfor %}</ul></div>
+
+{% if file.is_public == 'Y' and public_url %}
+<div class="card shadow-sm mb-3">
+  <div class="card-header fw-semibold">Public Sharing</div>
+  <div class="card-body">
+    <div class="alert alert-success py-2">This file is public.</div>
+    <div class="input-group mb-2">
+      <input class="form-control" value="{{ public_url }}" readonly>
+    </div>
+    <div class="d-flex gap-2">
+      <form method="post" action="{{ url_for('sb.sb_file_set_public', file_id=file.file_id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <input type="hidden" name="make_public" value="1" />
+        <input type="hidden" name="regenerate" value="1" />
+        <button class="btn btn-sm btn-outline-warning" type="submit">Regenerate Link</button>
+      </form>
+      <form method="post" action="{{ url_for('sb.sb_file_set_public', file_id=file.file_id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <input type="hidden" name="make_public" value="0" />
+        <button class="btn btn-sm btn-outline-danger" type="submit">Make Private</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="card shadow-sm mb-3"><div class="card-body"><div class="text-muted mb-3"><small>Tags: {{ file.tags or '-' }}</small><br><small>Created: {{ file.created_at }} | Updated: {{ file.updated_at }}</small></div><hr><div class="markdown-body">{{ html_content|safe }}</div></div></div>
+<div class="card shadow-sm"><div class="card-header fw-semibold">Linked Files</div><ul class="list-group list-group-flush">{% for l in links %}<li class="list-group-item"><a href="{{ url_for('sb.sb_file_view', file_id=l.file_id) }}" class="text-decoration-none">{{ l.title }}</a></li>{% else %}<li class="list-group-item text-muted">No linked files.</li>{% endfor %}</ul></div>
 {% endblock %}

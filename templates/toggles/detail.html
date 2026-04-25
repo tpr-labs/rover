@@ -1,28 +1,28 @@
 {% extends "shared/base.html" %}
-{% block title %}{{ item.item_key }} · Rover{% endblock %}
+{% block title %}{{ item.item_key }} · Toggle · Rover{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h4 mb-0">Key: {{ item.item_key }}</h1>
+  <h1 class="h4 mb-0">Toggle: {{ item.item_key }}</h1>
   <div class="d-flex gap-2">
-    <a class="btn btn-outline-secondary" href="{{ url_for('kv.kv_list') }}">Back</a>
-    <a class="btn btn-primary" href="{{ url_for('kv.kv_edit_page', item_key=item.item_key) }}">Edit</a>
+    <a class="btn btn-outline-secondary" href="{{ url_for('toggles.toggles_list') }}">Back</a>
+    <a class="btn btn-primary" href="{{ url_for('toggles.toggles_edit_page', item_key=item.item_key) }}">Edit</a>
   </div>
 </div>
 
 {% if message == 'created' %}
-<div class="alert alert-success">Created successfully.</div>
+<div class="alert alert-success">Toggle created successfully.</div>
 {% elif message == 'updated' %}
-<div class="alert alert-success">Updated successfully.</div>
+<div class="alert alert-success">Toggle updated successfully.</div>
 {% elif message == 'restored' %}
-<div class="alert alert-success">Restored successfully.</div>
+<div class="alert alert-success">Toggle restored successfully.</div>
 {% endif %}
 
 <div class="card shadow-sm mb-3">
   <div class="card-body">
     <dl class="row mb-0">
-      <dt class="col-sm-3">Value</dt>
+      <dt class="col-sm-3">Current Value</dt>
       <dd class="col-sm-9">{{ item.item_value }}</dd>
-      <dt class="col-sm-3">Additional Info</dt>
+      <dt class="col-sm-3">Description</dt>
       <dd class="col-sm-9" style="white-space: pre-wrap;">{{ item.additional_info or '-' }}</dd>
       <dt class="col-sm-3">Category</dt>
       <dd class="col-sm-9">{{ item.category or '-' }}</dd>
@@ -43,14 +43,19 @@
 </div>
 
 {% if item.is_active == 'Y' %}
-<form method="post" action="{{ url_for('kv.kv_delete', item_key=item.item_key) }}" onsubmit="return confirm('Deactivate this key?');">
+<form method="post" action="{{ url_for('toggles.toggles_delete', item_key=item.item_key) }}" onsubmit="return confirm('Deactivate this toggle?');" class="d-inline-block">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-  <button type="submit" class="btn btn-outline-danger">Deactivate</button>
+  <button type="submit" class="btn btn-outline-warning">Deactivate</button>
 </form>
 {% else %}
-<form method="post" action="{{ url_for('kv.kv_restore', item_key=item.item_key) }}">
+<form method="post" action="{{ url_for('toggles.toggles_restore', item_key=item.item_key) }}" class="d-inline-block">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
   <button type="submit" class="btn btn-outline-success">Restore</button>
 </form>
 {% endif %}
+
+<form method="post" action="{{ url_for('toggles.toggles_delete_permanent', item_key=item.item_key) }}" onsubmit="return confirm('Delete permanently? This cannot be undone.');" class="d-inline-block ms-2">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+  <button type="submit" class="btn btn-outline-danger">Delete Permanently</button>
+</form>
 {% endblock %}

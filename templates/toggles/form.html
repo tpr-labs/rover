@@ -1,9 +1,9 @@
 {% extends "shared/base.html" %}
-{% block title %}{% if mode == 'create' %}Create Key{% else %}Edit Key{% endif %} · Rover{% endblock %}
+{% block title %}{% if mode == 'create' %}Create Toggle{% else %}Edit Toggle{% endif %} · Rover{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h4 mb-0">{% if mode == 'create' %}Create Key-Value{% else %}Edit Key-Value{% endif %}</h1>
-  <a class="btn btn-outline-secondary" href="{{ url_for('kv.kv_list') }}">Back</a>
+  <h1 class="h4 mb-0">{% if mode == 'create' %}Create Toggle{% else %}Edit Toggle{% endif %}</h1>
+  <a class="btn btn-outline-secondary" href="{{ url_for('toggles.toggles_list') }}">Back</a>
 </div>
 
 {% if error_message %}
@@ -14,24 +14,26 @@
   <div class="card-body">
     <form method="post">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+
       <div class="mb-3">
         <label class="form-label">Key</label>
         <input class="form-control" name="item_key" maxlength="120" required {% if mode == 'edit' %}readonly{% endif %}
                value="{{ item.item_key if item else '' }}" />
       </div>
+
       <div class="mb-3">
-        <label class="form-label">Value (max 500)</label>
-        <input class="form-control" name="item_value" maxlength="500" required
-               value="{{ item.item_value if item else '' }}" />
+        <label class="form-label">Initial Value</label>
+        <select class="form-select" name="item_value">
+          <option value="Y" {% if item and item.item_value == 'Y' %}selected{% endif %}>Y (On)</option>
+          <option value="N" {% if not item or item.item_value == 'N' %}selected{% endif %}>N (Off)</option>
+        </select>
       </div>
+
       <div class="mb-3">
-        <label class="form-label">Additional Info (max 4000)</label>
-        <textarea class="form-control" name="additional_info" rows="6" maxlength="4000">{{ item.additional_info if item else '' }}</textarea>
+        <label class="form-label">Description</label>
+        <textarea class="form-control" name="additional_info" rows="5" maxlength="4000" placeholder="What this toggle controls">{{ item.additional_info if item else '' }}</textarea>
       </div>
-      <div class="mb-3">
-        <label class="form-label">Category</label>
-        <input class="form-control" name="category" maxlength="100" value="{{ item.category if item else '' }}" />
-      </div>
+
       {% if mode == 'edit' %}
       <div class="mb-3">
         <label class="form-label">Status</label>
@@ -41,7 +43,8 @@
         </select>
       </div>
       {% endif %}
-      <button class="btn btn-primary" type="submit">{% if mode == 'create' %}Create{% else %}Update{% endif %}</button>
+
+      <button class="btn btn-primary" type="submit">{% if mode == 'create' %}Create Toggle{% else %}Update Toggle{% endif %}</button>
     </form>
   </div>
 </div>

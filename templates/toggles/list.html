@@ -1,0 +1,188 @@
+{% extends "shared/base.html" %}
+{% block title %}Toggles · Rover{% endblock %}
+{% block content %}
+<style>
+  .android-switch {
+    position: relative;
+    display: inline-block;
+    width: 52px;
+    height: 30px;
+  }
+  .android-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .android-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background-color: #4b5563;
+    border-radius: 999px;
+    transition: .2s;
+  }
+  .android-slider:before {
+    content: "";
+    position: absolute;
+    height: 24px;
+    width: 24px;
+    left: 3px;
+    top: 3px;
+    background: #f8fafc;
+    border-radius: 50%;
+    transition: .2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,.35);
+  }
+  .android-switch input:checked + .android-slider {
+    background: #34d399;
+  }
+  .android-switch input:checked + .android-slider:before {
+    transform: translateX(22px);
+  }
+  .toggle-row-error {
+    color: #f87171;
+    font-size: .8rem;
+    min-height: 1.1rem;
+  }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0">Toggles</h1>
+  <a class="btn btn-primary" href="{{ url_for('toggles.toggles_new_page') }}">Create Toggle</a>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <form method="get" class="row g-2">
+      <div class="col-md-6">
+        <input class="form-control" name="q" placeholder="Search by key/info" value="{{ search }}" />
+      </div>
+      <div class="col-md-3">
+        <select class="form-select" name="status">
+          <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
+          <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactive</option>
+          <option value="all" {% if status == 'all' %}selected{% endif %}>All</option>
+        </select>
+      </div>
+      <div class="col-md-3 d-grid">
+        <button class="btn btn-outline-primary" type="submit">Search</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped table-hover mb-0">
+        <thead class="table-dark">
+          <tr>
+            <th>Key</th>
+            <th>Description</th>
+            <th>Switch</th>
+            <th>Status</th>
+            <th>Updated</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for item in items %}
+          <tr data-key="{{ item.item_key }}">
+            <td class="fw-semibold">{{ item.item_key }}</td>
+            <td>{{ item.additional_info or '-' }}</td>
+            <td>
+              {% if item.is_active == 'Y' %}
+              <label class="android-switch">
+                <input type="checkbox" class="toggle-switch" data-key="{{ item.item_key }}" {% if item.item_value == 'Y' %}checked{% endif %}>
+                <span class="android-slider"></span>
+              </label>
+              {% else %}
+              <span class="text-muted">Inactive</span>
+              {% endif %}
+              <div class="toggle-row-error" id="err-{{ item.item_key|replace(':','_')|replace('.','_')|replace('-','_') }}"></div>
+            </td>
+            <td>
+              {% if item.is_active == 'Y' %}
+              <span class="badge text-bg-success">Active</span>
+              {% else %}
+              <span class="badge text-bg-secondary">Inactive</span>
+              {% endif %}
+            </td>
+            <td>{{ item.updated_at_human }}</td>
+            <td class="text-end">
+              <div class="d-inline-flex gap-1">
+                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('toggles.toggles_detail', item_key=item.item_key) }}">View</a>
+                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('toggles.toggles_edit_page', item_key=item.item_key) }}">Edit</a>
+                {% if item.is_active == 'Y' %}
+                <form method="post" action="{{ url_for('toggles.toggles_delete', item_key=item.item_key) }}" onsubmit="return confirm('Deactivate this toggle?');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                  <button class="btn btn-sm btn-outline-warning" type="submit">Deactivate</button>
+                </form>
+                {% else %}
+                <form method="post" action="{{ url_for('toggles.toggles_restore', item_key=item.item_key) }}" onsubmit="return confirm('Restore this toggle?');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                  <button class="btn btn-sm btn-outline-success" type="submit">Restore</button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6" class="text-center text-muted py-4">No toggles found.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mt-3">
+  <span class="text-muted">Page {{ page }} of {{ total_pages }}</span>
+  <div class="d-flex gap-2">
+    {% if page > 1 %}
+    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('toggles.toggles_list', q=search, status=status, page=page-1) }}">Previous</a>
+    {% endif %}
+    {% if page < total_pages %}
+    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('toggles.toggles_list', q=search, status=status, page=page+1) }}">Next</a>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  async function updateToggle(toggleEl) {
+    const key = toggleEl.dataset.key;
+    const checked = toggleEl.checked;
+    const desired = checked ? 'Y' : 'N';
+    const original = !checked;
+    const errId = `err-${key.replaceAll(':','_').replaceAll('.','_').replaceAll('-','_')}`;
+    const errEl = document.getElementById(errId);
+
+    if (errEl) errEl.textContent = '';
+    toggleEl.disabled = true;
+
+    try {
+      const form = new FormData();
+      form.append('csrf_token', '{{ csrf_token }}');
+      form.append('value', desired);
+      const resp = await fetch(`{{ url_for('toggles.toggles_switch', item_key='__KEY__') }}`.replace('__KEY__', encodeURIComponent(key)), {
+        method: 'POST',
+        body: form,
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) {
+        toggleEl.checked = original;
+        if (errEl) errEl.textContent = data.error || 'Failed to update toggle';
+      }
+    } catch (_) {
+      toggleEl.checked = original;
+      if (errEl) errEl.textContent = 'Network error';
+    } finally {
+      toggleEl.disabled = false;
+    }
+  }
+
+  document.querySelectorAll('.toggle-switch').forEach((el) => {
+    el.addEventListener('change', () => updateToggle(el));
+  });
+</script>
+{% endblock %}

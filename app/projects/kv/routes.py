@@ -1,9 +1,32 @@
 from flask import Blueprint, redirect, render_template, request, url_for
+from datetime import date, datetime
 
 from app.core.auth import is_valid_csrf
-from .repository import create_item, deactivate_item, get_item, list_items, restore_item, update_item
+from .repository import create_item, deactivate_item, delete_item, get_item, list_items, restore_item, update_item
 
 kv_bp = Blueprint("kv", __name__)
+
+
+def _humanize_timestamp(value) -> str:
+    if value is None:
+        return "-"
+    if isinstance(value, datetime):
+        return value.strftime("%d %b %Y, %I:%M %p")
+    if isinstance(value, date):
+        return value.strftime("%d %b %Y")
+
+    text = str(value).strip()
+    for fmt in (
+        "%Y-%m-%d %H:%M:%S.%f",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%dT%H:%M:%S.%f",
+        "%Y-%m-%dT%H:%M:%S",
+    ):
+        try:
+            return datetime.strptime(text, fmt).strftime("%d %b %Y, %I:%M %p")
+        except ValueError:
+            continue
+    return text
 
 
 @kv_bp.get("/kv")
@@ -15,6 +38,8 @@ def kv_list():
     page_size = 20
 
     items, total_pages, status = list_items(search=search, category=category, status=status, page=page, page_size=page_size)
+    for item in items:
+        item["updated_at_human"] = _humanize_timestamp(item.get("updated_at"))
     return render_template(
         "kv/list.html",
         items=items,
@@ -100,3 +125,11 @@ def kv_restore(item_key: str):
         return render_template("shared/error.html"), 400
     restore_item(item_key)
     return redirect(url_for("kv.kv_detail", item_key=item_key, msg="restored"))
+
+
+@kv_bp.post("/kv/<path:item_key>/delete-permanent")
+def kv_delete_permanent(item_key: str):
+    if not is_valid_csrf(request.form.get("csrf_token")):
+        return render_template("shared/error.html"), 400
+    delete_item(item_key)
+    return redirect(url_for("kv.kv_list", msg="deleted"))

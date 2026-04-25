@@ -7,24 +7,7 @@ from app.core.db import get_db_connection
 
 
 KEY_RE = re.compile(r"^[A-Za-z0-9_:\-.]{1,120}$")
-
-
-def _normalized_category(category: str | None) -> str:
-    value = (category or "").strip()
-    return value if value else "NA"
-
-
-def validate_key_value_input(item_key: str, item_value: str, additional_info: str | None, category: str | None) -> None:
-    if not KEY_RE.fullmatch((item_key or "").strip()):
-        raise ValueError("Key must be 1-120 chars and contain only letters, numbers, _ : - .")
-    if not (item_value or "").strip():
-        raise ValueError("Value is required")
-    if len(item_value) > 500:
-        raise ValueError("Value must be at most 500 characters")
-    if additional_info and len(additional_info) > 4000:
-        raise ValueError("Additional info must be at most 4000 characters")
-    if category and len(category) > 100:
-        raise ValueError("Category must be at most 100 characters")
+TOGGLE_CATEGORY = "toggle"
 
 
 def _normalize_status(status: str | None) -> str:
@@ -34,16 +17,30 @@ def _normalize_status(status: str | None) -> str:
     return value
 
 
-def list_items(search: str | None, category: str | None, status: str | None, page: int, page_size: int) -> tuple[list[dict], int, str]:
+def _normalize_toggle_value(value: str | None) -> str:
+    val = (value or "N").strip().upper()
+    if val not in {"Y", "N"}:
+        raise ValueError("Toggle value must be Y or N")
+    return val
+
+
+def validate_toggle_input(item_key: str, additional_info: str | None, item_value: str | None) -> None:
+    if not KEY_RE.fullmatch((item_key or "").strip()):
+        raise ValueError("Key must be 1-120 chars and contain only letters, numbers, _ : - .")
+    _normalize_toggle_value(item_value)
+    if additional_info and len(additional_info) > 4000:
+        raise ValueError("Additional info must be at most 4000 characters")
+
+
+def list_toggles(search: str | None, status: str | None, page: int, page_size: int) -> tuple[list[dict], int, str]:
     search = (search or "").strip()
-    category = (category or "").strip()
     page = max(1, page)
     page_size = max(1, min(page_size, 100))
     offset = (page - 1) * page_size
-
-    where = []
-    params: dict[str, object] = {}
     status = _normalize_status(status)
+
+    where = ["LOWER(NVL(category, '')) = :category"]
+    params: dict[str, object] = {"category": TOGGLE_CATEGORY}
 
     if status == "active":
         where.append("is_active = 'Y'")
@@ -51,20 +48,17 @@ def list_items(search: str | None, category: str | None, status: str | None, pag
         where.append("is_active = 'N'")
 
     if search:
-        where.append("(LOWER(item_key) LIKE :search OR LOWER(item_value) LIKE :search OR LOWER(NVL(additional_info, '')) LIKE :search)")
+        where.append("(LOWER(item_key) LIKE :search OR LOWER(NVL(additional_info, '')) LIKE :search)")
         params["search"] = f"%{search.lower()}%"
-    if category:
-        where.append("LOWER(NVL(category, '')) = :category")
-        params["category"] = category.lower()
 
-    where_sql = f"WHERE {' AND '.join(where)}" if where else ""
+    where_sql = f"WHERE {' AND '.join(where)}"
 
     count_sql = f"SELECT COUNT(*) FROM kv_store {where_sql}"
     list_sql = f"""
-        SELECT item_key, item_value, additional_info, category, is_active, created_at, updated_at
+        SELECT item_key, item_value, additional_info, is_active, created_at, updated_at
         FROM kv_store
         {where_sql}
-        ORDER BY updated_at DESC
+        ORDER BY item_key
         OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
     """
 
@@ -81,10 +75,9 @@ def list_items(search: str | None, category: str | None, status: str | None, pag
                     "item_key": r[0],
                     "item_value": r[1],
                     "additional_info": r[2],
-                    "category": r[3],
-                    "is_active": r[4],
-                    "created_at": r[5],
-                    "updated_at": r[6],
+                    "is_active": r[3],
+                    "created_at": r[4],
+                    "updated_at": r[5],
                 }
                 for r in cur.fetchall()
             ]
@@ -93,15 +86,15 @@ def list_items(search: str | None, category: str | None, status: str | None, pag
     return rows, total_pages, status
 
 
-def get_item(item_key: str) -> dict | None:
+def get_toggle(item_key: str) -> dict | None:
     sql = """
         SELECT item_key, item_value, additional_info, category, is_active, created_at, updated_at
         FROM kv_store
-        WHERE item_key = :item_key
+        WHERE item_key = :item_key AND LOWER(NVL(category, '')) = :category
     """
     with get_db_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(sql, {"item_key": item_key})
+            cur.execute(sql, {"item_key": item_key, "category": TOGGLE_CATEGORY})
             row = cur.fetchone()
             if not row:
                 return None
@@ -116,11 +109,11 @@ def get_item(item_key: str) -> dict | None:
             }
 
 
-def create_item(item_key: str, item_value: str, additional_info: str | None, category: str | None) -> None:
-    validate_key_value_input(item_key, item_value, additional_info, category)
+def create_toggle(item_key: str, additional_info: str | None, item_value: str) -> None:
+    validate_toggle_input(item_key, additional_info, item_value)
     sql = """
-        INSERT INTO kv_store (item_key, item_value, additional_info, category)
-        VALUES (:item_key, :item_value, :additional_info, :category)
+        INSERT INTO kv_store (item_key, item_value, additional_info, category, is_active)
+        VALUES (:item_key, :item_value, :additional_info, :category, 'Y')
     """
     with get_db_connection() as conn:
         with conn.cursor() as cur:
@@ -129,9 +122,9 @@ def create_item(item_key: str, item_value: str, additional_info: str | None, cat
                     sql,
                     {
                         "item_key": item_key.strip(),
-                        "item_value": item_value.strip(),
+                        "item_value": _normalize_toggle_value(item_value),
                         "additional_info": (additional_info or "").strip() or None,
-                        "category": _normalized_category(category),
+                        "category": TOGGLE_CATEGORY,
                     },
                 )
                 conn.commit()
@@ -142,19 +135,19 @@ def create_item(item_key: str, item_value: str, additional_info: str | None, cat
                 raise
 
 
-def update_item(item_key: str, item_value: str, additional_info: str | None, category: str | None, is_active: str = "Y") -> bool:
-    validate_key_value_input(item_key, item_value, additional_info, category)
-    is_active = (is_active or "Y").strip().upper()
-    if is_active not in {"Y", "N"}:
+def update_toggle(item_key: str, additional_info: str | None, item_value: str, is_active: str = "Y") -> bool:
+    validate_toggle_input(item_key, additional_info, item_value)
+    active_val = (is_active or "Y").strip().upper()
+    if active_val not in {"Y", "N"}:
         raise ValueError("Status must be Y or N")
 
     sql = """
         UPDATE kv_store
         SET item_value = :item_value,
             additional_info = :additional_info,
-            category = :category,
-            is_active = :is_active
-        WHERE item_key = :item_key
+            is_active = :is_active,
+            category = :category
+        WHERE item_key = :item_key AND LOWER(NVL(category, '')) = :category
     """
     with get_db_connection() as conn:
         with conn.cursor() as cur:
@@ -162,65 +155,54 @@ def update_item(item_key: str, item_value: str, additional_info: str | None, cat
                 sql,
                 {
                     "item_key": item_key,
-                    "item_value": item_value.strip(),
+                    "item_value": _normalize_toggle_value(item_value),
                     "additional_info": (additional_info or "").strip() or None,
-                    "category": _normalized_category(category),
-                    "is_active": is_active,
+                    "is_active": active_val,
+                    "category": TOGGLE_CATEGORY,
                 },
             )
             conn.commit()
             return cur.rowcount > 0
 
 
-def deactivate_item(item_key: str) -> bool:
-    sql = "UPDATE kv_store SET is_active = 'N' WHERE item_key = :item_key"
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(sql, {"item_key": item_key})
-            conn.commit()
-            return cur.rowcount > 0
-
-
-def restore_item(item_key: str) -> bool:
-    sql = "UPDATE kv_store SET is_active = 'Y' WHERE item_key = :item_key"
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(sql, {"item_key": item_key})
-            conn.commit()
-            return cur.rowcount > 0
-
-
-def delete_item(item_key: str) -> bool:
-    sql = "DELETE FROM kv_store WHERE item_key = :item_key"
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(sql, {"item_key": item_key})
-            conn.commit()
-            return cur.rowcount > 0
-
-
-def list_dashboard_projects() -> list[dict]:
+def switch_toggle(item_key: str, desired_value: str) -> bool:
+    value = _normalize_toggle_value(desired_value)
     sql = """
-        SELECT item_key, item_value
-        FROM kv_store
-        WHERE category = 'dashboard' AND is_active = 'Y'
-        ORDER BY item_value
+        UPDATE kv_store
+        SET item_value = :item_value
+        WHERE item_key = :item_key
+          AND LOWER(NVL(category, '')) = :category
+          AND is_active = 'Y'
     """
     with get_db_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(sql)
-            rows = cur.fetchall()
+            cur.execute(sql, {"item_key": item_key, "item_value": value, "category": TOGGLE_CATEGORY})
+            conn.commit()
+            return cur.rowcount > 0
 
-    projects = []
-    for key, value in rows:
-        slug = (key or "").strip().lower()
-        if not slug:
-            continue
-        projects.append(
-            {
-                "key": key,
-                "title": value or key,
-                "path": f"/{slug}",
-            }
-        )
-    return projects
+
+def deactivate_toggle(item_key: str) -> bool:
+    sql = "UPDATE kv_store SET is_active = 'N' WHERE item_key = :item_key AND LOWER(NVL(category, '')) = :category"
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, {"item_key": item_key, "category": TOGGLE_CATEGORY})
+            conn.commit()
+            return cur.rowcount > 0
+
+
+def restore_toggle(item_key: str) -> bool:
+    sql = "UPDATE kv_store SET is_active = 'Y' WHERE item_key = :item_key AND LOWER(NVL(category, '')) = :category"
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, {"item_key": item_key, "category": TOGGLE_CATEGORY})
+            conn.commit()
+            return cur.rowcount > 0
+
+
+def delete_toggle(item_key: str) -> bool:
+    sql = "DELETE FROM kv_store WHERE item_key = :item_key AND LOWER(NVL(category, '')) = :category"
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, {"item_key": item_key, "category": TOGGLE_CATEGORY})
+            conn.commit()
+            return cur.rowcount > 0

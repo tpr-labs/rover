@@ -25,10 +25,13 @@ CREATE TABLE sb_files (
     content_md         CLOB NOT NULL,
     tags               VARCHAR2(1000),
     is_trashed         CHAR(1) DEFAULT 'N' NOT NULL,
+    is_public          CHAR(1) DEFAULT 'N' NOT NULL,
+    public_token       VARCHAR2(64),
     previous_folder_id NUMBER NULL,
     created_at         TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL,
     updated_at         TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL,
     CONSTRAINT chk_sb_files_trashed CHECK (is_trashed IN ('Y', 'N')),
+    CONSTRAINT chk_sb_files_public CHECK (is_public IN ('Y', 'N')),
     CONSTRAINT fk_sb_files_folder FOREIGN KEY (folder_id)
         REFERENCES sb_folders(folder_id)
 );
@@ -36,6 +39,8 @@ CREATE TABLE sb_files (
 CREATE INDEX idx_sb_files_folder ON sb_files(folder_id);
 CREATE INDEX idx_sb_files_trashed ON sb_files(is_trashed);
 CREATE INDEX idx_sb_files_tags ON sb_files(tags);
+CREATE UNIQUE INDEX uq_sb_files_public_token ON sb_files(public_token);
+CREATE INDEX idx_sb_files_public_lookup ON sb_files(is_public, public_token);
 CREATE UNIQUE INDEX uq_sb_files_folder_title
 ON sb_files (folder_id, LOWER(title), is_trashed);
 

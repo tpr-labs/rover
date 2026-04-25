@@ -46,7 +46,7 @@ def register_auth_guard(app: Flask) -> None:
     @app.before_request
     def require_authentication():
         public_paths = {"/health", "/login"}
-        if request.path in public_paths or request.path.startswith("/static/"):
+        if request.path in public_paths or request.path.startswith("/static/") or request.path.startswith("/sb/public/"):
             return None
         if is_authenticated():
             return None

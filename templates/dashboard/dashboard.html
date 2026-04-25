@@ -2,25 +2,42 @@
 {% block title %}Dashboard · Rover{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h4 mb-0">Projects Dashboard</h1>
-  <span class="badge text-bg-primary">{{ projects|length }} projects</span>
+  <h2 class="h6 mb-0 text-uppercase text-muted">Projects</h2>
+  <span class="badge text-bg-primary">{{ projects|length + 1 }} total</span>
 </div>
 
 <div class="row g-3">
+  <div class="col-12 col-md-6 col-lg-4">
+    <div class="card h-100 shadow-sm">
+      <div class="card-body d-flex flex-column">
+        <h3 class="h6 mb-1 text-light">DB</h3>
+        <p class="text-muted small mb-3">Database connection status</p>
+        <div class="mt-auto">
+          {% if db_connected %}
+          <span class="badge text-bg-success">{{ db_status_label }}</span>
+          {% else %}
+          <span class="badge text-bg-danger">{{ db_status_label }}</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
   {% for p in projects %}
   <div class="col-12 col-md-6 col-lg-4">
     <a href="{{ p.path }}" class="text-decoration-none">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <h2 class="h6 mb-1 text-dark">{{ p.title }}</h2>
-          <p class="text-muted small mb-0">/{{ p.key }}</p>
+      <div class="card h-100 shadow-sm">
+        <div class="card-body d-flex flex-column">
+          <h3 class="h6 mb-1 text-light">{{ p.title }}</h3>
+          <p class="text-muted small mb-3">/{{ p.key }}</p>
+          <div class="mt-auto small text-primary">Open project →</div>
         </div>
       </div>
     </a>
   </div>
   {% else %}
   <div class="col-12">
-    <div class="alert alert-info mb-0">No dashboard projects configured yet. Add active `kv_store` records with category `dashboard`.</div>
+    <div class="alert alert-info mb-0">No dashboard projects configured yet. Add active <code>kv_store</code> rows with category <code>dashboard</code>.</div>
   </div>
   {% endfor %}
 </div>

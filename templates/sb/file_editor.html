@@ -1,41 +1,307 @@
 {% extends "shared/base.html" %}
 {% block title %}{{ 'New File' if mode == 'create' else 'Edit File' }} · Rover{% endblock %}
 {% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
+<style>
+  .editor-shell .EasyMDEContainer .CodeMirror,
+  .editor-shell .EasyMDEContainer .CodeMirror-scroll {
+    min-height: 60vh;
+    background: #151920;
+    color: #e9ecef;
+    border-color: #3b414b;
+  }
+
+  .editor-shell .EasyMDEContainer .CodeMirror-cursor {
+    border-left-color: #e9ecef;
+  }
+
+  .editor-shell .editor-toolbar,
+  .editor-shell .editor-statusbar,
+  .editor-shell .CodeMirror,
+  .editor-shell .CodeMirror-sided {
+    border-color: #3b414b !important;
+  }
+
+  .editor-shell .editor-toolbar {
+    background: #20242b;
+  }
+
+  .editor-shell .editor-toolbar button {
+    color: #cbd5e1 !important;
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    line-height: 1;
+  }
+
+  .editor-shell .editor-toolbar i.separator {
+    border-left-color: #475569;
+    border-right: 0;
+    margin: 0 6px;
+    height: 18px;
+  }
+
+  .editor-shell .editor-toolbar button i {
+    font-size: 14px;
+    line-height: 1;
+    vertical-align: middle;
+  }
+
+  .editor-shell .editor-toolbar button:hover,
+  .editor-shell .editor-toolbar button.active {
+    background: #2b3240;
+    border-color: #475569;
+  }
+
+  .editor-shell .editor-preview,
+  .editor-shell .editor-preview-side {
+    background: #171b22;
+    color: #e5e7eb;
+  }
+
+  .editor-shell .editor-preview pre,
+  .editor-shell .editor-preview-side pre {
+    background: #11151b;
+    color: #e2e8f0;
+    border: 1px solid #374151;
+  }
+
+  .editor-shell .editor-statusbar {
+    color: #9ca3af;
+    background: #1a1f27;
+  }
+</style>
+
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4 mb-0">{{ 'Create File' if mode == 'create' else 'Edit File' }}</h1>
   <a class="btn btn-outline-secondary" href="{{ url_for('sb.sb_home', folder_id=selected_folder_id) if selected_folder_id else url_for('sb.sb_home') }}">Back</a>
 </div>
-{% if message == 'created' %}<div class="alert alert-success">File created.</div>{% endif %}
-{% if message == 'updated' %}<div class="alert alert-success">File updated.</div>{% endif %}
+{% if message == 'created' %}<div class="alert alert-success">File created. Continue writing — autosave is active.</div>{% endif %}
+{% if message == 'updated' %}<div class="alert alert-success">File updated successfully.</div>{% endif %}
 {% if error_message %}<div class="alert alert-danger">{{ error_message }}</div>{% endif %}
-<div class="row g-3">
-  <div class="col-lg-6"><div class="card shadow-sm border-0"><div class="card-body">
-    <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-      <div class="mb-3"><label class="form-label">Folder</label><select class="form-select" name="folder_id" required>{% for f in all_folders %}<option value="{{ f.folder_id }}" {% if selected_folder_id == f.folder_id %}selected{% endif %}>{{ f.folder_name }}</option>{% endfor %}</select></div>
-      <div class="mb-3"><label class="form-label">Title</label><input class="form-control" name="title" maxlength="300" required value="{{ file.title if file else '' }}" /></div>
-      <div class="mb-3"><label class="form-label">Tags</label><input class="form-control" name="tags" value="{{ file.tags if file else '' }}" /></div>
-      <div class="mb-3"><label class="form-label">Content</label><textarea id="content_md" class="form-control font-monospace" name="content_md" rows="18" required>{{ file.content_md if file else '' }}</textarea>{% if mode == 'edit' %}<small id="autosaveStatus" class="text-muted">Autosave enabled (5s)</small>{% endif %}</div>
-      <button class="btn btn-primary" type="submit">{{ 'Create' if mode == 'create' else 'Save' }}</button>
+
+<form method="post" id="fileEditorForm" class="editor-shell">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+  <input type="hidden" name="draft_file_id" id="draft_file_id" value="{{ file.file_id if file else '' }}" />
+
+  <div class="card shadow-sm mb-3">
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-lg-3">
+          <label class="form-label">Folder</label>
+          <select class="form-select" name="folder_id" required>
+            {% for f in all_folders %}
+            <option value="{{ f.folder_id }}" {% if selected_folder_id == f.folder_id %}selected{% endif %}>{{ f.folder_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-lg-5">
+          <label class="form-label">Title</label>
+          <input class="form-control" name="title" maxlength="300" required value="{{ file.title if file else '' }}" />
+        </div>
+        <div class="col-lg-4">
+          <label class="form-label">Tags</label>
+          <input class="form-control" name="tags" value="{{ file.tags if file else '' }}" placeholder="tag1, tag2" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span class="fw-semibold">Markdown Editor</span>
+      <small id="autosaveStatus" class="text-muted">
+        {% if mode == 'edit' %}Autosave enabled{% else %}Draft autosave enabled (local) · save to create file{% endif %}
+      </small>
+    </div>
+    <div class="card-body p-0">
+      <textarea id="content_md" class="form-control font-monospace" name="content_md" rows="18" required>{{ file.content_md if file else '' }}</textarea>
+    </div>
+    <div class="card-body border-top">
+      <button class="btn btn-primary" type="submit">{{ 'Create File' if mode == 'create' else 'Save Changes' }}</button>
+      <span class="text-muted small ms-2">Tip: Use side-by-side preview from toolbar for Obsidian-like flow.</span>
+    </div>
+  </div>
+</form>
+
+{% if mode == 'edit' %}
+<div class="card shadow-sm">
+  <div class="card-header fw-semibold">Linked Files</div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('sb.sb_file_add_link', file_id=file.file_id) }}" class="row g-2 mb-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <div class="col-9">
+        <select class="form-select" name="target_file_id" required>
+          {% for c in link_candidates %}
+          <option value="{{ c.file_id }}">{{ c.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-3 d-grid"><button class="btn btn-outline-primary" type="submit">Link</button></div>
     </form>
-  </div></div></div>
-  <div class="col-lg-6">
-    <div class="card shadow-sm border-0 mb-3"><div class="card-header bg-white fw-semibold">Preview</div><div class="card-body" id="previewPane">{{ preview_html|safe }}</div></div>
-    {% if mode == 'edit' %}
-    <div class="card shadow-sm border-0"><div class="card-header bg-white fw-semibold">Linked Files</div><div class="card-body">
-      <form method="post" action="{{ url_for('sb.sb_file_add_link', file_id=file.file_id) }}" class="row g-2 mb-3"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-        <div class="col-9"><select class="form-select" name="target_file_id" required>{% for c in link_candidates %}<option value="{{ c.file_id }}">{{ c.title }}</option>{% endfor %}</select></div>
-        <div class="col-3 d-grid"><button class="btn btn-outline-primary" type="submit">Link</button></div>
-      </form>
-      <ul class="list-group">{% for l in links %}<li class="list-group-item d-flex justify-content-between align-items-center"><a href="{{ url_for('sb.sb_file_view', file_id=l.file_id) }}" class="text-decoration-none">{{ l.title }}</a><form method="post" action="{{ url_for('sb.sb_file_remove_link', file_id=file.file_id, target_id=l.file_id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><button class="btn btn-sm btn-outline-danger" type="submit">Unlink</button></form></li>{% else %}<li class="list-group-item text-muted">No links yet.</li>{% endfor %}</ul>
-    </div></div>
-    {% endif %}
+    <ul class="list-group">
+      {% for l in links %}
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        <a href="{{ url_for('sb.sb_file_view', file_id=l.file_id) }}" class="text-decoration-none">{{ l.title }}</a>
+        <form method="post" action="{{ url_for('sb.sb_file_remove_link', file_id=file.file_id, target_id=l.file_id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+          <button class="btn btn-sm btn-outline-danger" type="submit">Unlink</button>
+        </form>
+      </li>
+      {% else %}
+      <li class="list-group-item text-muted">No links yet.</li>
+      {% endfor %}
+    </ul>
   </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script>
-const content=document.getElementById('content_md');const previewPane=document.getElementById('previewPane');function renderPreview(){if(content&&previewPane)previewPane.innerHTML=marked.parse(content.value||'');}if(content){content.addEventListener('input',renderPreview);renderPreview();}
-{% if mode=='edit' and file %}
-const status=document.getElementById('autosaveStatus');async function autosave(){const form=new FormData();form.append('csrf_token','{{ csrf_token }}');form.append('content_md',content.value||'');try{const resp=await fetch('{{ url_for("sb.sb_file_autosave", file_id=file.file_id) }}',{method:'POST',body:form});const data=await resp.json();status.textContent=data.ok?'Autosaved':'Autosave failed';}catch(_){status.textContent='Autosave failed';}}setInterval(autosave,5000);content.addEventListener('blur',autosave);
 {% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
+<script>
+  const textarea = document.getElementById('content_md');
+  const status = document.getElementById('autosaveStatus');
+  const draftFileIdInput = document.getElementById('draft_file_id');
+  const titleInput = document.querySelector('input[name="title"]');
+  const folderInput = document.querySelector('select[name="folder_id"]');
+  const tagsInput = document.querySelector('input[name="tags"]');
+
+  const editor = new EasyMDE({
+    element: textarea,
+    spellChecker: false,
+    autofocus: true,
+    autoDownloadFontAwesome: false,
+    forceSync: true,
+    sideBySideFullscreen: false,
+    toolbar: [
+      'bold', 'italic', 'strikethrough', '|',
+      'heading', 'heading-smaller', 'heading-bigger', '|',
+      'quote', 'unordered-list', 'ordered-list', '|',
+      'link', 'image', 'table', 'code', '|',
+      'preview', 'side-by-side', 'fullscreen', '|',
+      'guide'
+    ],
+    status: ['lines', 'words', 'cursor'],
+    renderingConfig: {
+      singleLineBreaks: false,
+      codeSyntaxHighlighting: false,
+    },
+    autosave: { enabled: false }
+  });
+
+  function setStatus(text, isError = false) {
+    if (!status) return;
+    status.textContent = text;
+    status.classList.toggle('text-danger', isError);
+    status.classList.toggle('text-muted', !isError);
+  }
+
+  const createAutosaveUrl = '{{ url_for("sb.sb_new_file_autosave") }}';
+  let currentFileId = {{ file.file_id if mode == 'edit' and file else 'null' }};
+
+  function autosaveUrl() {
+    if (!currentFileId) return createAutosaveUrl;
+    return `{{ url_for("sb.sb_file_autosave", file_id=0) }}`.replace('/0/', `/${currentFileId}/`);
+  }
+
+  let autosaveTimer = null;
+  let saveInFlight = false;
+  let lastSavedContent = editor.value();
+  let lastSavedMeta = {
+    title: titleInput ? titleInput.value : '',
+    tags: tagsInput ? tagsInput.value : '',
+    folderId: folderInput ? folderInput.value : ''
+  };
+
+  async function autosaveNow(reason = 'Autosaving...', force = false) {
+    if (saveInFlight) return;
+    const current = editor.value();
+    const hasContent = Boolean((current || '').trim());
+    if (!currentFileId && !hasContent) {
+      setStatus('Autosave starts after you add content');
+      return;
+    }
+    const currentMeta = {
+      title: titleInput ? titleInput.value : '',
+      tags: tagsInput ? tagsInput.value : '',
+      folderId: folderInput ? folderInput.value : ''
+    };
+    const metaUnchanged =
+      currentMeta.title === lastSavedMeta.title &&
+      currentMeta.tags === lastSavedMeta.tags &&
+      currentMeta.folderId === lastSavedMeta.folderId;
+    if (!force && current === lastSavedContent && metaUnchanged) return;
+
+    saveInFlight = true;
+    setStatus(reason);
+
+    try {
+      const form = new FormData();
+      form.append('csrf_token', '{{ csrf_token }}');
+      form.append('content_md', current);
+      form.append('folder_id', folderInput ? folderInput.value : '');
+      form.append('title', titleInput ? titleInput.value : '');
+      form.append('tags', tagsInput ? tagsInput.value : '');
+      if (currentFileId) {
+        form.append('draft_file_id', String(currentFileId));
+      }
+
+      const resp = await fetch(autosaveUrl(), { method: 'POST', body: form });
+      const data = await resp.json();
+      if (data && data.skipped) {
+        setStatus('Start typing title/tags/content to create draft');
+        return;
+      }
+      if (resp.ok && data.ok) {
+        if (data.file_id && !currentFileId) {
+          currentFileId = Number(data.file_id);
+          if (draftFileIdInput) draftFileIdInput.value = String(currentFileId);
+          const nextUrl = `{{ url_for("sb.sb_file_edit_page", file_id=0) }}`.replace('/0/edit', `/${currentFileId}/edit`);
+          window.history.replaceState({}, '', `${nextUrl}?msg=created`);
+          lastSavedContent = current;
+          lastSavedMeta = currentMeta;
+          setStatus('Draft created. Autosave enabled.');
+          return;
+        }
+        lastSavedContent = current;
+        lastSavedMeta = currentMeta;
+        const now = new Date();
+        setStatus(`Autosaved at ${now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second: '2-digit'})}`);
+      } else {
+        setStatus('Autosave failed', true);
+      }
+    } catch (_) {
+      setStatus('Autosave failed', true);
+    } finally {
+      saveInFlight = false;
+    }
+  }
+
+  function scheduleAutosave() {
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(() => autosaveNow('Autosaving...'), 1200);
+  }
+
+  editor.codemirror.on('change', scheduleAutosave);
+  editor.codemirror.on('blur', () => autosaveNow('Saving...'));
+  if (titleInput) {
+    titleInput.addEventListener('input', scheduleAutosave);
+    titleInput.addEventListener('change', () => autosaveNow('Saving...', true));
+    titleInput.addEventListener('blur', () => autosaveNow('Saving...', true));
+  }
+  if (tagsInput) {
+    tagsInput.addEventListener('input', scheduleAutosave);
+    tagsInput.addEventListener('change', () => autosaveNow('Saving...', true));
+    tagsInput.addEventListener('blur', () => autosaveNow('Saving...', true));
+  }
+  if (folderInput) folderInput.addEventListener('change', () => autosaveNow('Saving...', true));
+  window.addEventListener('beforeunload', () => {
+    editor.codemirror.save();
+  });
+  if (!currentFileId) {
+    setStatus('Autosave will start after you type content');
+  }
 </script>
 {% endblock %}

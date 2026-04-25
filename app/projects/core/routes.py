@@ -21,7 +21,21 @@ def home():
 @core_bp.get("/dashboard")
 def dashboard():
     projects = list_dashboard_projects()
-    return render_template("dashboard/dashboard.html", projects=projects)
+    db_connected = False
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1 FROM dual")
+                db_connected = cur.fetchone() is not None
+    except Exception:
+        db_connected = False
+
+    return render_template(
+        "dashboard/dashboard.html",
+        projects=projects,
+        db_connected=db_connected,
+        db_status_label="Connected" if db_connected else "Unavailable",
+    )
 
 
 @core_bp.get("/cities")
@@ -51,3 +65,5 @@ def cities():
                 )
 
     return render_template("legacy/cities.html", rows=rows)
+
+

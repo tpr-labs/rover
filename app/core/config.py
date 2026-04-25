@@ -19,3 +19,4 @@ def configure_app(app: Flask) -> None:
     app.config["SESSION_COOKIE_SECURE"] = env_bool("SESSION_COOKIE_SECURE", False)
 
     logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+    logging.getLogger("MARKDOWN").setLevel(os.getenv("MARKDOWN_LOG_LEVEL", "INFO"))

@@ -6,7 +6,7 @@
   <span class="badge text-bg-primary">{{ rows|length }} rows</span>
 </div>
 
-<div class="card shadow-sm border-0">
+<div class="card shadow-sm">
   <div class="card-body p-0">
     <div class="table-responsive">
       <table class="table table-hover table-striped mb-0 align-middle">
@@ -21,7 +21,7 @@
         {% for r in rows %}
           <tr>
             <td class="fw-semibold">{{ r.city_name }}</td>
-            <td><span class="badge text-bg-light border">{{ r.city_state }}</span></td>
+            <td><span class="badge text-bg-secondary border">{{ r.city_state }}</span></td>
             <td>{{ r.description }}</td>
           </tr>
         {% else %}
