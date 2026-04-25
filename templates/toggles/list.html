@@ -44,6 +44,12 @@
     font-size: .8rem;
     min-height: 1.1rem;
   }
+  .trim-cell {
+    max-width: 320px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -89,7 +95,9 @@
         {% for item in items %}
           <tr data-key="{{ item.item_key }}">
             <td class="fw-semibold">{{ item.item_key }}</td>
-            <td>{{ item.additional_info or '-' }}</td>
+            <td>
+              <div class="trim-cell" title="{{ item.additional_info or '-' }}">{{ item.additional_info or '-' }}</div>
+            </td>
             <td>
               {% if item.is_active == 'Y' %}
               <label class="android-switch">
