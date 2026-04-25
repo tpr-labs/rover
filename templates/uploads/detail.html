@@ -1,0 +1,83 @@
+{% extends "shared/base.html" %}
+{% block title %}{{ item.title }} · Upload · Rover{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0">Upload: {{ item.title }}</h1>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" href="{{ url_for('uploads.uploads_list') }}">Back</a>
+    <a class="btn btn-primary" href="{{ url_for('uploads.uploads_edit_page', upload_id=item.upload_id) }}">Edit</a>
+  </div>
+</div>
+
+{% if message == 'created' %}
+<div class="alert alert-success">File uploaded successfully.</div>
+{% elif message == 'updated' %}
+<div class="alert alert-success">Upload updated successfully.</div>
+{% endif %}
+{% if error_message %}
+<div class="alert alert-danger">{{ error_message }}</div>
+{% endif %}
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <dl class="row mb-0">
+      <dt class="col-sm-3">Title</dt>
+      <dd class="col-sm-9">{{ item.title }}</dd>
+      <dt class="col-sm-3">Original File</dt>
+      <dd class="col-sm-9">{{ item.original_file_name }}</dd>
+      <dt class="col-sm-3">Content Type</dt>
+      <dd class="col-sm-9">{{ item.content_type or '-' }}</dd>
+      <dt class="col-sm-3">Size (bytes)</dt>
+      <dd class="col-sm-9">{{ item.size_bytes }}</dd>
+      <dt class="col-sm-3">Object Name</dt>
+      <dd class="col-sm-9"><code>{{ item.object_name }}</code></dd>
+      <dt class="col-sm-3">Object URL</dt>
+      <dd class="col-sm-9"><a href="{{ item.object_url }}" target="_blank" rel="noopener noreferrer">Open Uploaded Object</a></dd>
+      <dt class="col-sm-3">Notes</dt>
+      <dd class="col-sm-9" style="white-space: pre-wrap;">{{ item.notes or '-' }}</dd>
+      <dt class="col-sm-3">Created At</dt>
+      <dd class="col-sm-9">{{ item.created_at_human }}</dd>
+      <dt class="col-sm-3">Updated At</dt>
+      <dd class="col-sm-9">{{ item.updated_at_human }}</dd>
+    </dl>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-header fw-semibold">Linked Secondary Brain Files</div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('uploads.uploads_add_link', upload_id=item.upload_id) }}" class="row g-2 mb-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <div class="col-9">
+        <select class="form-select" name="file_id" required>
+          {% for c in link_candidates %}
+          <option value="{{ c.file_id }}">{{ c.title }}</option>
+          {% else %}
+          <option value="" disabled selected>No available SB files</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-3 d-grid"><button class="btn btn-outline-primary" type="submit" {% if not link_candidates %}disabled{% endif %}>Link</button></div>
+    </form>
+
+    <ul class="list-group">
+      {% for l in links %}
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        <a href="{{ url_for('sb.sb_file_view', file_id=l.file_id) }}" class="text-decoration-none">{{ l.title }}</a>
+        <form method="post" action="{{ url_for('uploads.uploads_remove_link', upload_id=item.upload_id, file_id=l.file_id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+          <button class="btn btn-sm btn-outline-danger" type="submit">Unlink</button>
+        </form>
+      </li>
+      {% else %}
+      <li class="list-group-item text-muted">No linked SB files.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<form method="post" action="{{ url_for('uploads.uploads_delete', upload_id=item.upload_id) }}" onsubmit="return confirm('Delete this upload from DB and OCI object storage?');">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+  <button type="submit" class="btn btn-outline-danger">Delete</button>
+</form>
+{% endblock %}

@@ -8,6 +8,7 @@ from .shortcuts.routes import shortcuts_bp
 from .sb.routes import sb_bp
 from .sql.routes import sql_bp
 from .toggles.routes import toggles_bp
+from .uploads.routes import uploads_bp
 
 
 def register_project_blueprints(app: Flask) -> None:
@@ -18,4 +19,5 @@ def register_project_blueprints(app: Flask) -> None:
     app.register_blueprint(shortcuts_bp)
     app.register_blueprint(bookmarks_bp)
     app.register_blueprint(toggles_bp)
+    app.register_blueprint(uploads_bp)
     app.register_blueprint(sb_bp)
