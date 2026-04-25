@@ -6,3 +6,6 @@ bleach==6.1.0
 requests==2.32.3
 beautifulsoup4==4.12.3
 pymdown-extensions==10.14.2
+langchain==0.3.9
+langgraph==0.2.56
+google-genai==0.8.0

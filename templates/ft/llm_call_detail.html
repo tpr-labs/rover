@@ -1,0 +1,42 @@
+{% extends "shared/base.html" %}
+{% block title %}FT LLM Call #{{ item.call_id }} · Rover{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0">LLM Call #{{ item.call_id }}</h1>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_llm_calls_list') }}">Back</a>
+    <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_dashboard') }}">Dashboard</a>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <dl class="row mb-0">
+      <dt class="col-sm-3">Transaction ID</dt><dd class="col-sm-9">{{ item.transaction_id or '-' }}</dd>
+      <dt class="col-sm-3">Model</dt><dd class="col-sm-9">{{ item.model_name }}</dd>
+      <dt class="col-sm-3">Latency</dt><dd class="col-sm-9">{{ item.latency_ms }} ms</dd>
+      <dt class="col-sm-3">HTTP Status</dt><dd class="col-sm-9">{{ item.http_status or '-' }}</dd>
+      <dt class="col-sm-3">Tokens</dt><dd class="col-sm-9">total: {{ item.total_tokens }}, prompt: {{ item.prompt_tokens }}, completion: {{ item.completion_tokens }}</dd>
+      <dt class="col-sm-3">Cache Hit</dt><dd class="col-sm-9">{{ item.cache_hit }}</dd>
+      <dt class="col-sm-3">Request Hash</dt><dd class="col-sm-9"><code>{{ item.request_hash or '-' }}</code></dd>
+      <dt class="col-sm-3">Created</dt><dd class="col-sm-9">{{ item.created_at_human }}</dd>
+      <dt class="col-sm-3">Error</dt><dd class="col-sm-9">{{ item.error_message or '-' }}</dd>
+    </dl>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-header fw-semibold">Normalized Parsed Result</div>
+  <div class="card-body"><pre class="mb-0" style="white-space: pre-wrap;">{{ item.normalized_result_json or '-' }}</pre></div>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-header fw-semibold">Request Payload</div>
+  <div class="card-body"><pre class="mb-0" style="white-space: pre-wrap;">{{ item.request_payload or '-' }}</pre></div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-header fw-semibold">Response Payload</div>
+  <div class="card-body"><pre class="mb-0" style="white-space: pre-wrap;">{{ item.response_payload or '-' }}</pre></div>
+</div>
+{% endblock %}

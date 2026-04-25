@@ -1,0 +1,38 @@
+{% extends "shared/base.html" %}
+{% block title %}Finance Accounts · Rover{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0">Finance Accounts</h1>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_dashboard') }}">Dashboard</a>
+    <a class="btn btn-primary" href="{{ url_for('ft.ft_account_new_page') }}">Create Account</a>
+  </div>
+</div>
+
+{% if message %}<div class="alert alert-success">{{ message }}</div>{% endif %}
+
+<div class="card shadow-sm"><div class="card-body p-0"><div class="table-responsive"><table class="table table-striped mb-0">
+  <thead class="table-dark"><tr><th>Name</th><th>Type</th><th>Status</th><th>Updated</th><th class="text-end">Actions</th></tr></thead>
+  <tbody>
+  {% for item in items %}
+    <tr>
+      <td class="fw-semibold">{{ item.account_name }}</td>
+      <td><span class="badge text-bg-secondary">{{ item.account_type }}</span></td>
+      <td>{% if item.is_active == 'Y' %}<span class="badge text-bg-success">Active</span>{% else %}<span class="badge text-bg-secondary">Inactive</span>{% endif %}</td>
+      <td>{{ item.updated_at_human }}</td>
+      <td class="text-end">
+        <div class="btn-group btn-group-sm" role="group" aria-label="Row actions">
+          <a class="btn btn-outline-primary" href="{{ url_for('ft.ft_account_edit_page', account_id=item.account_id) }}" title="Edit"><i class="fa-solid fa-pen"></i></a>
+          <form method="post" action="{{ url_for('ft.ft_account_delete', account_id=item.account_id) }}" onsubmit="return confirm('Delete this account?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button class="btn btn-outline-danger" type="submit" title="Delete"><i class="fa-solid fa-trash"></i></button>
+          </form>
+        </div>
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="text-center text-muted py-4">No accounts found.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div></div></div>
+{% endblock %}

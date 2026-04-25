@@ -1,0 +1,29 @@
+{% extends "shared/base.html" %}
+{% block title %}{% if mode == 'create' %}Create Transaction{% else %}Edit Transaction{% endif %} · Rover{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0">{% if mode == 'create' %}Create Transaction{% else %}Edit Transaction{% endif %}</h1>
+  <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_transactions_list') }}">Back</a>
+</div>
+
+{% if error_message %}<div class="alert alert-danger">{{ error_message }}</div>{% endif %}
+
+<div class="card shadow-sm"><div class="card-body">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <div class="mb-3"><label class="form-label">Raw Text</label><textarea class="form-control" name="raw_text" rows="3">{{ item.raw_text if item else '' }}</textarea></div>
+    <div class="row g-3">
+      <div class="col-md-3"><label class="form-label">Amount</label><input class="form-control" name="amount" required value="{{ item.amount if item else '' }}" /></div>
+      <div class="col-md-3"><label class="form-label">Direction</label><select class="form-select" name="direction"><option value="INCOME" {% if item and item.direction=='INCOME' %}selected{% endif %}>INCOME</option><option value="EXPENSE" {% if not item or item.direction=='EXPENSE' %}selected{% endif %}>EXPENSE</option></select></div>
+      <div class="col-md-3"><label class="form-label">Date</label><input class="form-control" name="tx_date" type="date" value="{{ item.tx_date if item else '' }}" /></div>
+      <div class="col-md-3"><label class="form-label">Status</label><select class="form-select" name="status"><option value="PENDING" {% if item and item.status=='PENDING' %}selected{% endif %}>PENDING</option><option value="PROCESSED" {% if item and item.status=='PROCESSED' %}selected{% endif %}>PROCESSED</option><option value="FAILED" {% if item and item.status=='FAILED' %}selected{% endif %}>FAILED</option><option value="MANUAL" {% if not item or item.status=='MANUAL' %}selected{% endif %}>MANUAL</option></select></div>
+    </div>
+    <div class="row g-3 mt-1">
+      <div class="col-md-4"><label class="form-label">Category</label><input class="form-control" name="category" value="{{ item.category if item else '' }}" /></div>
+      <div class="col-md-4"><label class="form-label">Account</label><select class="form-select" name="account_id"><option value="">-- none --</option>{% for a in accounts %}<option value="{{ a.account_id }}" {% if item and item.account_id==a.account_id %}selected{% endif %}>{{ a.account_name }} ({{ a.account_type }})</option>{% endfor %}</select></div>
+      <div class="col-md-12"><label class="form-label">Description</label><textarea class="form-control" name="description" rows="3">{{ item.description if item else '' }}</textarea></div>
+    </div>
+    <button class="btn btn-primary mt-3" type="submit">{% if mode == 'create' %}Create{% else %}Update{% endif %}</button>
+  </form>
+</div></div>
+{% endblock %}

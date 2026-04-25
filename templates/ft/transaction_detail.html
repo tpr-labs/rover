@@ -1,0 +1,32 @@
+{% extends "shared/base.html" %}
+{% block title %}Transaction #{{ item.transaction_id }} · Rover{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0">Transaction #{{ item.transaction_id }}</h1>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_transactions_list') }}">Back</a>
+    <a class="btn btn-primary" href="{{ url_for('ft.ft_transaction_edit_page', transaction_id=item.transaction_id) }}">Edit</a>
+  </div>
+</div>
+
+{% if message == 'created' %}<div class="alert alert-success">Transaction created.</div>{% elif message == 'updated' %}<div class="alert alert-success">Transaction updated.</div>{% endif %}
+
+<div class="card shadow-sm mb-3"><div class="card-body"><dl class="row mb-0">
+  <dt class="col-sm-3">Raw Text</dt><dd class="col-sm-9" style="white-space: pre-wrap;">{{ item.raw_text or '-' }}</dd>
+  <dt class="col-sm-3">Amount</dt><dd class="col-sm-9">{{ '%.2f'|format(item.amount) }}</dd>
+  <dt class="col-sm-3">Direction</dt><dd class="col-sm-9">{{ item.direction }}</dd>
+  <dt class="col-sm-3">Date</dt><dd class="col-sm-9">{{ item.tx_date_human }}</dd>
+  <dt class="col-sm-3">Category</dt><dd class="col-sm-9">{{ item.category or '-' }}</dd>
+  <dt class="col-sm-3">Description</dt><dd class="col-sm-9" style="white-space: pre-wrap;">{{ item.description or '-' }}</dd>
+  <dt class="col-sm-3">Account</dt><dd class="col-sm-9">{{ item.account_name or '-' }}</dd>
+  <dt class="col-sm-3">Status</dt><dd class="col-sm-9">{{ item.status }}</dd>
+  <dt class="col-sm-3">LLM Processed</dt><dd class="col-sm-9">{{ item.llm_processed_at or '-' }}</dd>
+  <dt class="col-sm-3">Created At</dt><dd class="col-sm-9">{{ item.created_at_human }}</dd>
+  <dt class="col-sm-3">Updated At</dt><dd class="col-sm-9">{{ item.updated_at_human }}</dd>
+</dl></div></div>
+
+<form method="post" action="{{ url_for('ft.ft_transaction_delete', transaction_id=item.transaction_id) }}" onsubmit="return confirm('Delete this transaction?');">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+  <button class="btn btn-outline-danger" type="submit">Delete</button>
+</form>
+{% endblock %}
