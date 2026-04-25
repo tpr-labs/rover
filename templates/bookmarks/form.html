@@ -1,0 +1,52 @@
+{% extends "shared/base.html" %}
+{% block title %}{% if mode == 'create' %}Create Bookmark{% else %}Edit Bookmark{% endif %} · Rover{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0">{% if mode == 'create' %}Create Bookmark{% else %}Edit Bookmark{% endif %}</h1>
+  <a class="btn btn-outline-secondary" href="{{ url_for('bookmarks.bookmarks_list') }}">Back</a>
+</div>
+
+{% if error_message %}
+<div class="alert alert-danger">{{ error_message }}</div>
+{% endif %}
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+
+      <div class="mb-3">
+        <label class="form-label">URL</label>
+        <input class="form-control" type="url" name="url" maxlength="2000" required placeholder="https://example.com"
+               value="{{ item.url if item else '' }}" />
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Title</label>
+        <input class="form-control" name="title" maxlength="500" placeholder="Leave blank to auto-fetch from URL"
+               value="{{ item.title if item else '' }}" />
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Category</label>
+        <input class="form-control" name="category" maxlength="100" value="{{ item.category if item else '' }}" />
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Starred</label>
+        <select class="form-select" name="starred">
+          <option value="0" {% if not item or item.starred == 0 %}selected{% endif %}>No</option>
+          <option value="1" {% if item and item.starred == 1 %}selected{% endif %}>Yes</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Notes</label>
+        <textarea class="form-control" name="notes" rows="6" maxlength="4000">{{ item.notes if item else '' }}</textarea>
+      </div>
+
+      <button class="btn btn-primary" type="submit">{% if mode == 'create' %}Create Bookmark{% else %}Update Bookmark{% endif %}</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
