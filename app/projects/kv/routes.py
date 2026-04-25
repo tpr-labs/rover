@@ -33,11 +33,19 @@ def _humanize_timestamp(value) -> str:
 def kv_list():
     search = request.args.get("q", "")
     category = request.args.get("category", "")
+    sub_category = request.args.get("sub_category", "")
     status = request.args.get("status", "active")
     page = max(1, int(request.args.get("page", "1")))
     page_size = 20
 
-    items, total_pages, status = list_items(search=search, category=category, status=status, page=page, page_size=page_size)
+    items, total_pages, status = list_items(
+        search=search,
+        category=category,
+        sub_category=sub_category,
+        status=status,
+        page=page,
+        page_size=page_size,
+    )
     for item in items:
         item["updated_at_human"] = _humanize_timestamp(item.get("updated_at"))
     return render_template(
@@ -45,6 +53,7 @@ def kv_list():
         items=items,
         search=search,
         category=category,
+        sub_category=sub_category,
         status=status,
         page=page,
         total_pages=total_pages,
@@ -66,9 +75,10 @@ def kv_new_submit():
         "item_value": request.form.get("item_value") or "",
         "additional_info": request.form.get("additional_info") or "",
         "category": request.form.get("category") or "",
+        "sub_category": request.form.get("sub_category") or "",
     }
     try:
-        create_item(item["item_key"], item["item_value"], item["additional_info"], item["category"])
+        create_item(item["item_key"], item["item_value"], item["additional_info"], item["category"], item["sub_category"])
         return redirect(url_for("kv.kv_detail", item_key=item["item_key"], msg="created"))
     except ValueError as exc:
         return render_template("kv/form.html", mode="create", item=item, error_message=str(exc)), 400
@@ -100,10 +110,18 @@ def kv_edit_submit(item_key: str):
         "item_value": request.form.get("item_value") or "",
         "additional_info": request.form.get("additional_info") or "",
         "category": request.form.get("category") or "",
+        "sub_category": request.form.get("sub_category") or "",
         "is_active": request.form.get("is_active") or "Y",
     }
     try:
-        ok = update_item(item_key, item["item_value"], item["additional_info"], item["category"], item["is_active"])
+        ok = update_item(
+            item_key,
+            item["item_value"],
+            item["additional_info"],
+            item["category"],
+            item["sub_category"],
+            item["is_active"],
+        )
         if not ok:
             return render_template("shared/error.html"), 404
         return redirect(url_for("kv.kv_detail", item_key=item_key, msg="updated"))

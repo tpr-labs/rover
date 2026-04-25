@@ -32,6 +32,10 @@
         <label class="form-label">Category</label>
         <input class="form-control" name="category" maxlength="100" value="{{ item.category if item else '' }}" />
       </div>
+      <div class="mb-3">
+        <label class="form-label">Sub Category</label>
+        <input class="form-control" name="sub_category" maxlength="100" value="{{ item.sub_category if item else '' }}" />
+      </div>
       {% if mode == 'edit' %}
       <div class="mb-3">
         <label class="form-label">Status</label>

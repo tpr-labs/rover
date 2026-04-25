@@ -9,11 +9,14 @@
 <div class="card shadow-sm mb-3">
   <div class="card-body">
     <form method="get" class="row g-2">
-      <div class="col-md-4">
+      <div class="col-md-3">
         <input class="form-control" name="q" placeholder="Search key/value/info" value="{{ search }}" />
       </div>
-      <div class="col-md-3">
+      <div class="col-md-2">
         <input class="form-control" name="category" placeholder="Category" value="{{ category }}" />
+      </div>
+      <div class="col-md-2">
+        <input class="form-control" name="sub_category" placeholder="Sub Category" value="{{ sub_category }}" />
       </div>
       <div class="col-md-3">
         <select class="form-select" name="status">
@@ -38,6 +41,7 @@
             <th>Key</th>
             <th>Value</th>
             <th>Category</th>
+            <th>Sub Category</th>
             <th>Status</th>
             <th>Updated</th>
             <th class="text-end">Actions</th>
@@ -49,6 +53,7 @@
             <td class="fw-semibold">{{ item.item_key }}</td>
             <td>{{ item.item_value }}</td>
             <td>{{ item.category or '-' }}</td>
+            <td>{{ item.sub_category or '-' }}</td>
             <td>
               {% if item.is_active == 'Y' %}
               <span class="badge text-bg-success">Active</span>
@@ -80,7 +85,7 @@
             </td>
           </tr>
         {% else %}
-          <tr><td colspan="6" class="text-center text-muted py-4">No records found.</td></tr>
+          <tr><td colspan="7" class="text-center text-muted py-4">No records found.</td></tr>
         {% endfor %}
         </tbody>
       </table>
@@ -92,10 +97,10 @@
   <span class="text-muted">Page {{ page }} of {{ total_pages }}</span>
   <div class="d-flex gap-2">
     {% if page > 1 %}
-    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('kv.kv_list', q=search, category=category, status=status, page=page-1) }}">Previous</a>
+    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('kv.kv_list', q=search, category=category, sub_category=sub_category, status=status, page=page-1) }}">Previous</a>
     {% endif %}
     {% if page < total_pages %}
-    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('kv.kv_list', q=search, category=category, status=status, page=page+1) }}">Next</a>
+    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('kv.kv_list', q=search, category=category, sub_category=sub_category, status=status, page=page+1) }}">Next</a>
     {% endif %}
   </div>
 </div>

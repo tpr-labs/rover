@@ -549,7 +549,7 @@ def get_graph_snapshot(scope: str = "subtree", root_folder_id: int | None = None
         params = {f"f{idx}": folder_id for idx, folder_id in enumerate(folder_ids)}
         cur.execute(
             f"""
-            SELECT file_id, folder_id, title, tags, created_at, updated_at
+            SELECT file_id, folder_id, title, tags, is_public, created_at, updated_at
             FROM sb_files
             WHERE is_trashed = 'N' AND folder_id IN ({bind})
             ORDER BY updated_at DESC
@@ -562,10 +562,11 @@ def get_graph_snapshot(scope: str = "subtree", root_folder_id: int | None = None
                 "folder_id": int(folder_id),
                 "title": title,
                 "tags": tags,
+                "is_public": is_public,
                 "created_at": created_at,
                 "updated_at": updated_at,
             }
-            for file_id, folder_id, title, tags, created_at, updated_at in cur.fetchall()
+            for file_id, folder_id, title, tags, is_public, created_at, updated_at in cur.fetchall()
         ]
 
     with get_db_connection() as conn:
@@ -611,6 +612,7 @@ def get_graph_snapshot(scope: str = "subtree", root_folder_id: int | None = None
                 "file_id": file["file_id"],
                 "folder_id": file["folder_id"],
                 "tags": file["tags"],
+                "is_public": file.get("is_public", "N"),
                 "created_at": file["created_at"],
                 "updated_at": file["updated_at"],
             }

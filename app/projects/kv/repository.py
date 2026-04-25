@@ -14,7 +14,18 @@ def _normalized_category(category: str | None) -> str:
     return value if value else "NA"
 
 
-def validate_key_value_input(item_key: str, item_value: str, additional_info: str | None, category: str | None) -> None:
+def _normalized_sub_category(sub_category: str | None) -> str | None:
+    value = (sub_category or "").strip()
+    return value or None
+
+
+def validate_key_value_input(
+    item_key: str,
+    item_value: str,
+    additional_info: str | None,
+    category: str | None,
+    sub_category: str | None = None,
+) -> None:
     if not KEY_RE.fullmatch((item_key or "").strip()):
         raise ValueError("Key must be 1-120 chars and contain only letters, numbers, _ : - .")
     if not (item_value or "").strip():
@@ -25,6 +36,8 @@ def validate_key_value_input(item_key: str, item_value: str, additional_info: st
         raise ValueError("Additional info must be at most 4000 characters")
     if category and len(category) > 100:
         raise ValueError("Category must be at most 100 characters")
+    if sub_category and len(sub_category) > 100:
+        raise ValueError("Sub Category must be at most 100 characters")
 
 
 def _normalize_status(status: str | None) -> str:
@@ -34,9 +47,17 @@ def _normalize_status(status: str | None) -> str:
     return value
 
 
-def list_items(search: str | None, category: str | None, status: str | None, page: int, page_size: int) -> tuple[list[dict], int, str]:
+def list_items(
+    search: str | None,
+    category: str | None,
+    sub_category: str | None,
+    status: str | None,
+    page: int,
+    page_size: int,
+) -> tuple[list[dict], int, str]:
     search = (search or "").strip()
     category = (category or "").strip()
+    sub_category = (sub_category or "").strip()
     page = max(1, page)
     page_size = max(1, min(page_size, 100))
     offset = (page - 1) * page_size
@@ -56,12 +77,15 @@ def list_items(search: str | None, category: str | None, status: str | None, pag
     if category:
         where.append("LOWER(NVL(category, '')) = :category")
         params["category"] = category.lower()
+    if sub_category:
+        where.append("LOWER(NVL(sub_category, '')) = :sub_category")
+        params["sub_category"] = sub_category.lower()
 
     where_sql = f"WHERE {' AND '.join(where)}" if where else ""
 
     count_sql = f"SELECT COUNT(*) FROM kv_store {where_sql}"
     list_sql = f"""
-        SELECT item_key, item_value, additional_info, category, is_active, created_at, updated_at
+        SELECT item_key, item_value, additional_info, category, sub_category, is_active, created_at, updated_at
         FROM kv_store
         {where_sql}
         ORDER BY updated_at DESC
@@ -82,9 +106,10 @@ def list_items(search: str | None, category: str | None, status: str | None, pag
                     "item_value": r[1],
                     "additional_info": r[2],
                     "category": r[3],
-                    "is_active": r[4],
-                    "created_at": r[5],
-                    "updated_at": r[6],
+                    "sub_category": r[4],
+                    "is_active": r[5],
+                    "created_at": r[6],
+                    "updated_at": r[7],
                 }
                 for r in cur.fetchall()
             ]
@@ -95,7 +120,7 @@ def list_items(search: str | None, category: str | None, status: str | None, pag
 
 def get_item(item_key: str) -> dict | None:
     sql = """
-        SELECT item_key, item_value, additional_info, category, is_active, created_at, updated_at
+        SELECT item_key, item_value, additional_info, category, sub_category, is_active, created_at, updated_at
         FROM kv_store
         WHERE item_key = :item_key
     """
@@ -110,17 +135,24 @@ def get_item(item_key: str) -> dict | None:
                 "item_value": row[1],
                 "additional_info": row[2],
                 "category": row[3],
-                "is_active": row[4],
-                "created_at": row[5],
-                "updated_at": row[6],
+                "sub_category": row[4],
+                "is_active": row[5],
+                "created_at": row[6],
+                "updated_at": row[7],
             }
 
 
-def create_item(item_key: str, item_value: str, additional_info: str | None, category: str | None) -> None:
-    validate_key_value_input(item_key, item_value, additional_info, category)
+def create_item(
+    item_key: str,
+    item_value: str,
+    additional_info: str | None,
+    category: str | None,
+    sub_category: str | None,
+) -> None:
+    validate_key_value_input(item_key, item_value, additional_info, category, sub_category)
     sql = """
-        INSERT INTO kv_store (item_key, item_value, additional_info, category)
-        VALUES (:item_key, :item_value, :additional_info, :category)
+        INSERT INTO kv_store (item_key, item_value, additional_info, category, sub_category)
+        VALUES (:item_key, :item_value, :additional_info, :category, :sub_category)
     """
     with get_db_connection() as conn:
         with conn.cursor() as cur:
@@ -132,6 +164,7 @@ def create_item(item_key: str, item_value: str, additional_info: str | None, cat
                         "item_value": item_value.strip(),
                         "additional_info": (additional_info or "").strip() or None,
                         "category": _normalized_category(category),
+                        "sub_category": _normalized_sub_category(sub_category),
                     },
                 )
                 conn.commit()
@@ -142,8 +175,15 @@ def create_item(item_key: str, item_value: str, additional_info: str | None, cat
                 raise
 
 
-def update_item(item_key: str, item_value: str, additional_info: str | None, category: str | None, is_active: str = "Y") -> bool:
-    validate_key_value_input(item_key, item_value, additional_info, category)
+def update_item(
+    item_key: str,
+    item_value: str,
+    additional_info: str | None,
+    category: str | None,
+    sub_category: str | None,
+    is_active: str = "Y",
+) -> bool:
+    validate_key_value_input(item_key, item_value, additional_info, category, sub_category)
     is_active = (is_active or "Y").strip().upper()
     if is_active not in {"Y", "N"}:
         raise ValueError("Status must be Y or N")
@@ -153,6 +193,7 @@ def update_item(item_key: str, item_value: str, additional_info: str | None, cat
         SET item_value = :item_value,
             additional_info = :additional_info,
             category = :category,
+            sub_category = :sub_category,
             is_active = :is_active
         WHERE item_key = :item_key
     """
@@ -165,6 +206,7 @@ def update_item(item_key: str, item_value: str, additional_info: str | None, cat
                     "item_value": item_value.strip(),
                     "additional_info": (additional_info or "").strip() or None,
                     "category": _normalized_category(category),
+                    "sub_category": _normalized_sub_category(sub_category),
                     "is_active": is_active,
                 },
             )
