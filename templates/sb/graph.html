@@ -4,7 +4,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4 mb-0"><i class="fa-solid fa-diagram-project me-2"></i>Secondary Brain Graph</h1>
   <div class="d-flex gap-2">
-    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('sb.sb_home') }}"><i class="fa-solid fa-folder-tree me-1"></i>File Explorer</a>
+    <a class="btn btn-secondary btn-sm" href="{{ url_for('sb.sb_home') }}"><i class="fa-solid fa-folder-tree me-1"></i>File Explorer</a>
   </div>
 </div>
 
@@ -38,6 +38,40 @@
   .sb-node-details .detail-visibility {
     margin-bottom: .55rem;
   }
+
+  .sb-node-details .detail-meta {
+    display: grid;
+    grid-template-columns: 88px 1fr;
+    gap: .25rem .6rem;
+    margin: .55rem 0 .8rem;
+    font-size: .86rem;
+  }
+
+  .sb-node-details .detail-meta .label {
+    color: #94a3b8;
+  }
+
+  .sb-node-details .detail-meta .value {
+    color: #e5e7eb;
+    word-break: break-word;
+  }
+
+  .sb-node-details .tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+  }
+
+  .sb-node-details .tag-chip {
+    display: inline-block;
+    padding: .15rem .45rem;
+    border-radius: 999px;
+    border: 1px solid #475569;
+    background: rgba(71, 85, 105, .28);
+    color: #dbeafe;
+    font-size: .74rem;
+    line-height: 1.2;
+  }
 </style>
 
 <div class="row g-3">
@@ -47,7 +81,7 @@
         <span class="fw-semibold">Graph</span>
         <button
           id="graphToggleBtn"
-          class="btn btn-outline-secondary btn-sm"
+          class="btn btn-secondary btn-sm"
           type="button"
           data-bs-toggle="collapse"
           data-bs-target="#graphPanel"
@@ -82,6 +116,7 @@
   const graphPanel = document.getElementById('graphPanel');
   const graphToggleBtn = document.getElementById('graphToggleBtn');
   const graphDataUrl = '{{ url_for("sb.sb_graph_data") }}';
+  const sbHomeUrl = '{{ url_for("sb.sb_home") }}';
 
   let zoom;
   let simulation;
@@ -143,14 +178,47 @@
       details.innerHTML = '<p class="text-muted mb-0">Click a node to see details.</p>';
       return;
     }
+
+    const escapeHtml = (s) => String(s ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+
+    const fileId = node.kind === 'file' ? (node.id || '').split(':')[1] || '-' : null;
+    const folderId = node.folder_id || null;
+    const kindBadge = node.kind === 'folder' ? 'rv-badge-pending' : node.kind === 'root_hub' ? 'rv-badge-primary' : 'rv-badge-info';
+    const tags = (node.tags || '')
+      .split(',')
+      .map(t => t.trim())
+      .filter(Boolean);
+    const folderOpenUrl = folderId ? `${sbHomeUrl}?folder_id=${encodeURIComponent(folderId)}` : null;
+
+    const tagsHtml = tags.length
+      ? `<div class="tag-list">${tags.map(t => `<span class="tag-chip">${escapeHtml(t)}</span>`).join('')}</div>`
+      : '<span class="text-muted">-</span>';
+
     details.innerHTML = `
-      <div class="mb-2"><span class="badge rv-badge ${node.kind === 'folder' ? 'rv-badge-pending' : node.kind === 'root_hub' ? 'rv-badge-primary' : 'rv-badge-info'}">${node.kind}</span></div>
-      ${node.kind === 'file' ? `<div class="detail-visibility"><span class="badge rv-badge ${node.is_public === 'Y' ? 'rv-badge-active' : 'rv-badge-neutral'}">${node.is_public === 'Y' ? 'Public' : 'Private'}</span></div>` : ''}
-      <h6 class="detail-name">${node.name}</h6>
-      <div class="detail-row">Created: ${node.created_at_human || '-'}</div>
-      <div class="detail-row">Updated: ${node.updated_at_human || '-'}</div>
-      ${node.tags ? `<div class="detail-tags"><strong>Tags:</strong> ${node.tags}</div>` : ''}
-      ${node.go_to_url ? `<a class="btn btn-sm btn-outline-secondary" href="${node.go_to_url}"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Go to</a>` : ''}
+      <div class="mb-2 d-flex flex-wrap align-items-center gap-2">
+        <span class="badge rv-badge ${kindBadge}">${escapeHtml(node.kind)}</span>
+        ${node.kind === 'file' ? `<span class="badge rv-badge ${node.is_public === 'Y' ? 'rv-badge-active' : 'rv-badge-neutral'}">${node.is_public === 'Y' ? 'Public' : 'Private'}</span>` : ''}
+      </div>
+      <h6 class="detail-name">${escapeHtml(node.name || '-')}</h6>
+
+      <div class="detail-meta">
+        ${node.kind === 'file' ? `<div class="label">File ID</div><div class="value">${escapeHtml(fileId)}</div>` : ''}
+        ${folderId ? `<div class="label">Folder ID</div><div class="value">${escapeHtml(folderId)}</div>` : ''}
+        <div class="label">Created</div><div class="value">${escapeHtml(node.created_at_human || '-')}</div>
+        <div class="label">Updated</div><div class="value">${escapeHtml(node.updated_at_human || '-')}</div>
+      </div>
+
+      ${node.kind === 'file' ? `<div class="detail-tags"><strong>Tags</strong><div class="mt-2">${tagsHtml}</div></div>` : ''}
+
+      <div class="d-flex flex-wrap gap-2 mt-2">
+        ${node.go_to_url ? `<a class="btn btn-sm btn-secondary" href="${node.go_to_url}"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Open</a>` : ''}
+        ${node.kind === 'file' && folderOpenUrl ? `<a class="btn btn-sm btn-secondary" href="${folderOpenUrl}"><i class="fa-regular fa-folder-open me-1"></i>Open Folder</a>` : ''}
+      </div>
     `;
   }
 

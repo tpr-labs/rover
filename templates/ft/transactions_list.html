@@ -5,9 +5,9 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4 mb-0">Finance Transactions</h1>
   <div class="d-flex gap-2">
-    <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_dashboard') }}">Dashboard</a>
-    <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_llm_calls_list') }}">LLM Calls</a>
-    <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_transactions_new_page') }}">Create</a>
+    <a class="btn btn-secondary" href="{{ url_for('ft.ft_dashboard') }}">Dashboard</a>
+    <a class="btn btn-secondary" href="{{ url_for('ft.ft_llm_calls_list') }}">LLM Calls</a>
+    <a class="btn btn-secondary" href="{{ url_for('ft.ft_transactions_new_page') }}">Create</a>
   </div>
 </div>
 
@@ -18,7 +18,7 @@
   <form method="post" action="{{ url_for('ft.ft_transactions_create_raw') }}" class="row g-2">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
     <div class="col-md-10"><input class="form-control" name="raw_text" placeholder="Raw text e.g. income 5000 from act1 salary for June" required /></div>
-    <div class="col-md-2 d-grid"><button class="btn btn-outline-secondary" type="submit">Add Raw</button></div>
+    <div class="col-md-2 d-grid"><button class="btn btn-secondary" type="submit">Add Raw</button></div>
   </form>
 </div></div>
 
@@ -45,7 +45,7 @@
       <option value="INCOME" {% if direction=='INCOME' %}selected{% endif %}>Income</option>
       <option value="EXPENSE" {% if direction=='EXPENSE' %}selected{% endif %}>Expense</option>
     </select></div>
-    <div class="col-md-1 d-grid"><button class="btn btn-outline-secondary" type="submit">Go</button></div>
+    <div class="col-md-1 d-grid"><button class="btn btn-secondary" type="submit">Go</button></div>
   </form>
 </div></div>
 
@@ -54,7 +54,7 @@
     <span>Unprocessed Transactions</span>
     <form method="post" action="{{ url_for('ft.ft_transactions_process_pending') }}" class="m-0">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-      <button class="btn btn-sm btn-outline-secondary" type="submit">Process Pending (LLM)</button>
+      <button class="btn btn-sm btn-secondary" type="submit">Process Pending (LLM)</button>
     </form>
   </div>
   <div class="card-body">
@@ -103,8 +103,8 @@
 <div class="d-flex justify-content-between align-items-center mt-3">
   <span class="text-muted">Page {{ page }} of {{ total_pages }}</span>
   <div class="d-flex gap-2">
-    {% if page > 1 %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for('ft.ft_transactions_list', q=search, status=status, direction=direction, account_id=selected_account_id, start_date=start_date, end_date=end_date, page=page-1) }}">Previous</a>{% endif %}
-    {% if page < total_pages %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for('ft.ft_transactions_list', q=search, status=status, direction=direction, account_id=selected_account_id, start_date=start_date, end_date=end_date, page=page+1) }}">Next</a>{% endif %}
+    {% if page > 1 %}<a class="btn btn-sm btn-secondary" href="{{ url_for('ft.ft_transactions_list', q=search, status=status, direction=direction, account_id=selected_account_id, start_date=start_date, end_date=end_date, page=page-1) }}">Previous</a>{% endif %}
+    {% if page < total_pages %}<a class="btn btn-sm btn-secondary" href="{{ url_for('ft.ft_transactions_list', q=search, status=status, direction=direction, account_id=selected_account_id, start_date=start_date, end_date=end_date, page=page+1) }}">Next</a>{% endif %}
   </div>
 </div>
 {% endblock %}

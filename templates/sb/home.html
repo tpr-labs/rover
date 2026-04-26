@@ -1,12 +1,30 @@
 {% extends "shared/base.html" %}
 {% block title %}Secondary Brain · Rover{% endblock %}
 {% block content %}
+<style>
+  .sb-search-title mark,
+  .sb-search-tags mark,
+  .sb-search-snippet mark {
+    background: rgba(250, 204, 21, .35);
+    color: #fff7cc;
+    padding: 0 .1rem;
+    border-radius: .2rem;
+  }
+</style>
+
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4 mb-0"><i class="fa-regular fa-folder-open me-2"></i>Secondary Brain</h1>
   <div class="d-flex gap-2">
-    <a class="btn btn-outline-secondary" href="{{ url_for('sb.sb_graph') }}"><i class="fa-solid fa-diagram-project me-1"></i>Graph</a>
-    <a class="btn btn-outline-secondary" href="{{ url_for('sb.sb_new_folder_page', parent_id=selected_folder.folder_id) if selected_folder else url_for('sb.sb_new_folder_page') }}"><i class="fa-regular fa-folder me-1"></i>New Folder</a>
-    <a class="btn btn-outline-secondary" href="{{ url_for('sb.sb_new_file_page', folder_id=selected_folder.folder_id) if selected_folder else url_for('sb.sb_new_file_page') }}"><i class="fa-regular fa-file-lines me-1"></i>New File</a>
+    <a class="btn btn-secondary" href="{{ url_for('sb.sb_graph') }}"><i class="fa-solid fa-diagram-project me-1"></i>Graph</a>
+    <div class="dropdown">
+      <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="fa-solid fa-plus me-1"></i>New
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="{{ url_for('sb.sb_new_folder_page', parent_id=selected_folder.folder_id) if selected_folder else url_for('sb.sb_new_folder_page') }}"><i class="fa-regular fa-folder me-2"></i>New Folder</a></li>
+        <li><a class="dropdown-item" href="{{ url_for('sb.sb_new_file_page', folder_id=selected_folder.folder_id) if selected_folder else url_for('sb.sb_new_file_page') }}"><i class="fa-regular fa-file-lines me-2"></i>New File</a></li>
+      </ul>
+    </div>
   </div>
 </div>
 
@@ -15,12 +33,38 @@
     <form method="get" class="row g-2">
       {% if selected_folder %}<input type="hidden" name="folder_id" value="{{ selected_folder.folder_id }}">{% endif %}
       <div class="col-md-10">
-        <input class="form-control" name="q" value="{{ query }}" placeholder="Search files by title or tags" />
+        <input class="form-control" name="q" value="{{ query }}" placeholder="Search files by title, tags, or content" />
       </div>
-      <div class="col-md-2 d-grid"><button class="btn btn-outline-secondary" type="submit"><i class="fa-solid fa-magnifying-glass me-1"></i>Search</button></div>
+      <div class="col-md-2 d-grid"><button class="btn btn-secondary" type="submit"><i class="fa-solid fa-magnifying-glass me-1"></i>Search</button></div>
     </form>
   </div>
 </div>
+
+{% if query %}
+<div class="card shadow-sm mb-3">
+  <div class="card-header fw-semibold"><i class="fa-solid fa-magnifying-glass me-1"></i>Search Results</div>
+  <div class="list-group list-group-flush">
+    {% for r in search_results %}
+    <a class="list-group-item list-group-item-action" href="{{ r.result_url }}">
+      <div class="d-flex justify-content-between align-items-start gap-3">
+        <div class="flex-grow-1">
+          <div class="sb-search-title fw-semibold">
+            <i class="fa-{{ 'regular fa-folder' if r.result_kind == 'Folder' else 'regular fa-file-lines' }} me-2"></i>{{ r.title_highlight|safe }}
+            <span class="badge rv-badge rv-badge-neutral ms-2">{{ r.result_kind }}</span>
+          </div>
+          {% if r.snippet_highlight %}
+          <div class="sb-search-snippet small text-muted mt-1">{{ r.snippet_highlight|safe }}</div>
+          {% endif %}
+        </div>
+        <small class="sb-search-tags text-muted text-end">{{ r.tags_highlight|safe if r.tags else (r.result_kind if r.result_kind == 'Folder' else '-') }}</small>
+      </div>
+    </a>
+    {% else %}
+    <div class="list-group-item text-muted">No results.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
 
 <nav aria-label="SB Breadcrumb" class="mb-3">
   <ol class="breadcrumb mb-0">
@@ -48,9 +92,9 @@
     </span>
     <div class="d-flex gap-2">
       {% if parent_folder_id is not none %}
-      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('sb.sb_home', folder_id=parent_folder_id) }}"><i class="fa-solid fa-arrow-left me-1"></i>Up</a>
+      <a class="btn btn-sm btn-secondary" href="{{ url_for('sb.sb_home', folder_id=parent_folder_id) }}"><i class="fa-solid fa-arrow-left me-1"></i>Up</a>
       {% elif selected_folder %}
-      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('sb.sb_home') }}"><i class="fa-solid fa-house me-1"></i>Root</a>
+      <a class="btn btn-sm btn-secondary" href="{{ url_for('sb.sb_home') }}"><i class="fa-solid fa-house me-1"></i>Root</a>
       {% endif %}
     </div>
   </div>
@@ -64,12 +108,12 @@
         </span>
       </a>
       <span class="d-flex align-items-center gap-2">
-        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('sb.sb_edit_folder_page', folder_id=f.folder_id) }}" title="Edit folder">
+        <a class="btn btn-sm btn-secondary" href="{{ url_for('sb.sb_edit_folder_page', folder_id=f.folder_id) }}" title="Edit folder">
           <i class="fa-regular fa-pen-to-square"></i>
         </a>
         <form method="post" action="{{ url_for('sb.sb_delete_folder', folder_id=f.folder_id) }}" class="m-0" onsubmit="return confirm('Delete folder permanently? This removes all nested folders and files.');">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-          <button class="btn btn-sm btn-outline-secondary" type="submit" title="Delete folder">
+          <button class="btn btn-sm btn-secondary" type="submit" title="Delete folder">
             <i class="fa-regular fa-trash-can"></i>
           </button>
         </form>
@@ -83,10 +127,10 @@
         <small class="d-block text-muted mt-1">Modified: {{ file.updated_at_human }}</small>
       </a>
       <div class="d-flex gap-2">
-        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('sb.sb_file_edit_page', file_id=file.file_id) }}"><i class="fa-regular fa-pen-to-square"></i></a>
+        <a class="btn btn-sm btn-secondary" href="{{ url_for('sb.sb_file_edit_page', file_id=file.file_id) }}"><i class="fa-regular fa-pen-to-square"></i></a>
         <form method="post" action="{{ url_for('sb.sb_file_delete', file_id=file.file_id) }}" onsubmit="return confirm('Delete file permanently?');">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-          <button class="btn btn-sm btn-outline-secondary" type="submit"><i class="fa-regular fa-trash-can"></i></button>
+          <button class="btn btn-sm btn-secondary" type="submit"><i class="fa-regular fa-trash-can"></i></button>
         </form>
       </div>
     </div>
@@ -97,19 +141,4 @@
   </div>
 </div>
 
-{% if query %}
-<div class="card shadow-sm">
-  <div class="card-header fw-semibold"><i class="fa-solid fa-magnifying-glass me-1"></i>Search Results</div>
-  <div class="list-group list-group-flush">
-    {% for r in search_results %}
-    <a class="list-group-item list-group-item-action d-flex justify-content-between" href="{{ url_for('sb.sb_file_view', file_id=r.file_id) }}">
-      <span><i class="fa-regular fa-file-lines me-2"></i>{{ r.title }}</span>
-      <small class="text-muted">{{ r.tags or '-' }}</small>
-    </a>
-    {% else %}
-    <div class="list-group-item text-muted">No results.</div>
-    {% endfor %}
-  </div>
-</div>
-{% endif %}
 {% endblock %}

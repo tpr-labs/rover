@@ -691,7 +691,9 @@ def get_finance_summary() -> dict:
             NVL(SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END), 0) AS total_income,
             NVL(SUM(CASE WHEN amount < 0 THEN amount ELSE 0 END), 0) AS total_expense,
             NVL(SUM(amount), 0) AS net_amount,
-            SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END) AS pending_count
+            SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END) AS pending_count,
+            NVL(SUM(CASE WHEN amount < 0 AND TRUNC(tx_date) = TRUNC(SYSDATE) THEN ABS(amount) ELSE 0 END), 0) AS today_spend,
+            NVL(SUM(CASE WHEN amount < 0 AND TRUNC(tx_date, 'MM') = TRUNC(SYSDATE, 'MM') THEN ABS(amount) ELSE 0 END), 0) AS month_spend
         FROM ft_transactions
     """
     recent_sql = """
@@ -711,7 +713,7 @@ def get_finance_summary() -> dict:
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql)
-            row = cur.fetchone() or (0, 0, 0, 0)
+            row = cur.fetchone() or (0, 0, 0, 0, 0, 0)
             cur.execute(recent_sql)
             recent = [
                 {
@@ -733,6 +735,8 @@ def get_finance_summary() -> dict:
         "total_expense": float(row[1] or 0),
         "net_amount": float(row[2] or 0),
         "pending_count": int(row[3] or 0),
+        "today_spend": float(row[4] or 0),
+        "month_spend": float(row[5] or 0),
         "llm_calls_total": int(llm_row[0] or 0),
         "llm_calls_today": int(llm_row[1] or 0),
         "recent": recent,

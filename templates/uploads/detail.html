@@ -4,8 +4,8 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4 mb-0">Upload: {{ item.title }}</h1>
   <div class="d-flex gap-2">
-    <a class="btn btn-outline-secondary" href="{{ url_for('uploads.uploads_list') }}">Back</a>
-    <a class="btn btn-outline-secondary" href="{{ url_for('uploads.uploads_edit_page', upload_id=item.upload_id) }}">Edit</a>
+    <a class="btn btn-secondary" href="{{ url_for('uploads.uploads_list') }}">Back</a>
+    <a class="btn btn-secondary" href="{{ url_for('uploads.uploads_edit_page', upload_id=item.upload_id) }}">Edit</a>
   </div>
 </div>
 
@@ -57,7 +57,7 @@
           {% endfor %}
         </select>
       </div>
-      <div class="col-3 d-grid"><button class="btn btn-outline-secondary" type="submit" {% if not link_candidates %}disabled{% endif %}>Link</button></div>
+      <div class="col-3 d-grid"><button class="btn btn-secondary" type="submit" {% if not link_candidates %}disabled{% endif %}>Link</button></div>
     </form>
 
     <ul class="list-group">
@@ -66,7 +66,7 @@
         <a href="{{ url_for('sb.sb_file_view', file_id=l.file_id) }}" class="text-decoration-none">{{ l.title }}</a>
         <form method="post" action="{{ url_for('uploads.uploads_remove_link', upload_id=item.upload_id, file_id=l.file_id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-          <button class="btn btn-sm btn-outline-secondary" type="submit">Unlink</button>
+          <button class="btn btn-sm btn-secondary" type="submit">Unlink</button>
         </form>
       </li>
       {% else %}
@@ -78,6 +78,6 @@
 
 <form method="post" action="{{ url_for('uploads.uploads_delete', upload_id=item.upload_id) }}" onsubmit="return confirm('Delete this upload from DB and OCI object storage?');">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-  <button type="submit" class="btn btn-outline-secondary">Delete</button>
+  <button type="submit" class="btn btn-secondary">Delete</button>
 </form>
 {% endblock %}

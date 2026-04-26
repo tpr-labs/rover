@@ -19,18 +19,18 @@
 {%- endmacro %}
 
 {% macro tx_actions(item, csrf_token, allow_mark_pending=True, allow_delete=True) -%}
-<div class="btn-group btn-group-sm" role="group" aria-label="Row actions">
-  <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_transaction_detail', transaction_id=item.transaction_id) }}" title="View"><i class="fa-solid fa-eye"></i></a>
+<div class="btn-group btn-group-sm border border-secondary rounded" role="group" aria-label="Row actions">
+  <a class="btn btn-secondary" href="{{ url_for('ft.ft_transaction_detail', transaction_id=item.transaction_id) }}" title="View"><i class="fa-solid fa-eye"></i></a>
   {% if allow_mark_pending and item.status != 'PENDING' %}
   <form method="post" action="{{ url_for('ft.ft_transaction_mark_pending', transaction_id=item.transaction_id) }}" class="d-inline">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-    <button class="btn btn-outline-secondary" type="submit" title="Mark to Process"><i class="fa-solid fa-rotate-left"></i></button>
+    <button class="btn btn-secondary" type="submit" title="Mark to Process"><i class="fa-solid fa-rotate-left"></i></button>
   </form>
   {% endif %}
   {% if allow_delete %}
   <form method="post" action="{{ url_for('ft.ft_transaction_delete', transaction_id=item.transaction_id) }}" class="d-inline">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-    <button class="btn btn-outline-secondary" type="submit" title="Delete" onclick="return confirm('Delete this transaction?');"><i class="fa-solid fa-trash"></i></button>
+    <button class="btn btn-secondary" type="submit" title="Delete" onclick="return confirm('Delete this transaction?');"><i class="fa-solid fa-trash"></i></button>
   </form>
   {% endif %}
 </div>
@@ -60,6 +60,6 @@
 
 {% macro llm_actions(item) -%}
 <div class="btn-group btn-group-sm" role="group" aria-label="Row actions">
-  <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_llm_call_detail', call_id=item.call_id) }}" title="View"><i class="fa-solid fa-eye"></i></a>
+  <a class="btn btn-secondary" href="{{ url_for('ft.ft_llm_call_detail', call_id=item.call_id) }}" title="View"><i class="fa-solid fa-eye"></i></a>
 </div>
 {%- endmacro %}

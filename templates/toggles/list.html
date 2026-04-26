@@ -54,7 +54,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4 mb-0">Toggles</h1>
-  <a class="btn btn-outline-secondary" href="{{ url_for('toggles.toggles_new_page') }}">Create Toggle</a>
+  <a class="btn btn-secondary" href="{{ url_for('toggles.toggles_new_page') }}">Create Toggle</a>
 </div>
 
 <div class="card shadow-sm mb-3">
@@ -71,7 +71,7 @@
         </select>
       </div>
       <div class="col-md-3 d-grid">
-        <button class="btn btn-outline-secondary" type="submit">Search</button>
+        <button class="btn btn-secondary" type="submit">Search</button>
       </div>
     </form>
   </div>
@@ -119,17 +119,17 @@
             <td>{{ item.updated_at_human }}</td>
             <td class="text-end">
               <div class="d-inline-flex gap-1">
-                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('toggles.toggles_detail', item_key=item.item_key) }}">View</a>
-                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('toggles.toggles_edit_page', item_key=item.item_key) }}">Edit</a>
+                <a class="btn btn-sm btn-secondary" href="{{ url_for('toggles.toggles_detail', item_key=item.item_key) }}">View</a>
+                <a class="btn btn-sm btn-secondary" href="{{ url_for('toggles.toggles_edit_page', item_key=item.item_key) }}">Edit</a>
                 {% if item.is_active == 'Y' %}
                 <form method="post" action="{{ url_for('toggles.toggles_delete', item_key=item.item_key) }}" onsubmit="return confirm('Deactivate this toggle?');">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                  <button class="btn btn-sm btn-outline-secondary" type="submit">Deactivate</button>
+                  <button class="btn btn-sm btn-secondary" type="submit">Deactivate</button>
                 </form>
                 {% else %}
                 <form method="post" action="{{ url_for('toggles.toggles_restore', item_key=item.item_key) }}" onsubmit="return confirm('Restore this toggle?');">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                  <button class="btn btn-sm btn-outline-secondary" type="submit">Restore</button>
+                  <button class="btn btn-sm btn-secondary" type="submit">Restore</button>
                 </form>
                 {% endif %}
               </div>
@@ -148,10 +148,10 @@
   <span class="text-muted">Page {{ page }} of {{ total_pages }}</span>
   <div class="d-flex gap-2">
     {% if page > 1 %}
-    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('toggles.toggles_list', q=search, status=status, page=page-1) }}">Previous</a>
+    <a class="btn btn-sm btn-secondary" href="{{ url_for('toggles.toggles_list', q=search, status=status, page=page-1) }}">Previous</a>
     {% endif %}
     {% if page < total_pages %}
-    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('toggles.toggles_list', q=search, status=status, page=page+1) }}">Next</a>
+    <a class="btn btn-sm btn-secondary" href="{{ url_for('toggles.toggles_list', q=search, status=status, page=page+1) }}">Next</a>
     {% endif %}
   </div>
 </div>

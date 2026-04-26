@@ -4,17 +4,28 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4 mb-0">{{ file.title }}</h1>
   <div class="d-flex gap-2">
-    <a class="btn btn-outline-secondary" href="{{ url_for('sb.sb_home', folder_id=file.folder_id) }}">Back</a>
-    <a class="btn btn-outline-secondary" href="{{ url_for('sb.sb_file_edit_page', file_id=file.file_id) }}">Edit</a>
+    <a class="btn btn-secondary" href="{{ url_for('sb.sb_home', folder_id=file.folder_id) }}">Back</a>
+    <a class="btn btn-secondary" href="{{ url_for('sb.sb_file_edit_page', file_id=file.file_id) }}">Edit</a>
     {% if file.is_public != 'Y' %}
     <form method="post" action="{{ url_for('sb.sb_file_set_public', file_id=file.file_id) }}" class="m-0">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
       <input type="hidden" name="make_public" value="1" />
-      <button class="btn btn-outline-secondary" type="submit">Make Public</button>
+      <button class="btn btn-secondary" type="submit">Make Public</button>
     </form>
     {% endif %}
   </div>
 </div>
+
+<nav aria-label="File path" class="mb-3">
+  <ol class="breadcrumb mb-0">
+    {% for c in file_path %}
+      <li class="breadcrumb-item">
+        <a href="{{ url_for('sb.sb_home', folder_id=c.folder_id) if c.folder_id is not none else url_for('sb.sb_home') }}">{{ c.folder_name }}</a>
+      </li>
+    {% endfor %}
+    <li class="breadcrumb-item active" aria-current="page">{{ file.title }}</li>
+  </ol>
+</nav>
 
 {% if file.is_public == 'Y' and public_url %}
 <div class="card shadow-sm mb-3">
@@ -29,12 +40,12 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
         <input type="hidden" name="make_public" value="1" />
         <input type="hidden" name="regenerate" value="1" />
-        <button class="btn btn-sm btn-outline-secondary" type="submit">Regenerate Link</button>
+        <button class="btn btn-sm btn-secondary" type="submit">Regenerate Link</button>
       </form>
       <form method="post" action="{{ url_for('sb.sb_file_set_public', file_id=file.file_id) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
         <input type="hidden" name="make_public" value="0" />
-        <button class="btn btn-sm btn-outline-secondary" type="submit">Make Private</button>
+        <button class="btn btn-sm btn-secondary" type="submit">Make Private</button>
       </form>
     </div>
   </div>

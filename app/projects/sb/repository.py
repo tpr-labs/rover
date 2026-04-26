@@ -117,20 +117,57 @@ def search_files(query: str) -> list[dict[str, Any]]:
     q = (query or "").strip().lower()
     if not q:
         return []
-    sql = """
-        SELECT file_id, title, tags, updated_at
+    file_sql = """
+        SELECT file_id, title, tags, content_md, updated_at
         FROM sb_files
         WHERE is_trashed = 'N'
-          AND (LOWER(title) LIKE :q OR LOWER(NVL(tags, '')) LIKE :q)
+          AND (
+                LOWER(title) LIKE :q
+                OR LOWER(NVL(tags, '')) LIKE :q
+                OR LOWER(NVL(content_md, '')) LIKE :q
+              )
+        ORDER BY updated_at DESC
+        FETCH FIRST 100 ROWS ONLY
+    """
+    folder_sql = """
+        SELECT folder_id, folder_name, updated_at
+        FROM sb_folders
+        WHERE is_trashed = 'N'
+          AND LOWER(folder_name) LIKE :q
         ORDER BY updated_at DESC
         FETCH FIRST 100 ROWS ONLY
     """
     out = []
     with get_db_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(sql, {"q": f"%{q}%"})
-            for file_id, title, tags, updated_at in cur.fetchall():
-                out.append({"file_id": int(file_id), "title": title, "tags": tags, "updated_at": updated_at})
+            cur.execute(file_sql, {"q": f"%{q}%"})
+            for file_id, title, tags, content_md, updated_at in cur.fetchall():
+                out.append(
+                    {
+                        "result_type": "file",
+                        "file_id": int(file_id),
+                        "folder_id": None,
+                        "title": title,
+                        "tags": tags,
+                        "content_md": _to_text(content_md),
+                        "updated_at": updated_at,
+                    }
+                )
+            cur.execute(folder_sql, {"q": f"%{q}%"})
+            for folder_id, folder_name, updated_at in cur.fetchall():
+                out.append(
+                    {
+                        "result_type": "folder",
+                        "file_id": None,
+                        "folder_id": int(folder_id),
+                        "title": folder_name,
+                        "tags": None,
+                        "content_md": "",
+                        "updated_at": updated_at,
+                    }
+                )
+
+    out.sort(key=lambda r: r.get("updated_at") or 0, reverse=True)
     return out
 
 
