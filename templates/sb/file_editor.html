@@ -73,12 +73,54 @@
     color: #9ca3af;
     background: #1a1f27;
   }
+
+  .sb-live-preview {
+    line-height: 1.7;
+    color: #e5e7eb;
+  }
+  .sb-live-preview h1, .sb-live-preview h2, .sb-live-preview h3,
+  .sb-live-preview h4, .sb-live-preview h5, .sb-live-preview h6 {
+    color: #f8fafc;
+    margin-top: 1.2rem;
+    margin-bottom: .6rem;
+  }
+  .sb-live-preview pre {
+    background: #111827;
+    border: 1px solid #334155;
+    border-radius: .5rem;
+    padding: .75rem;
+    overflow-x: auto;
+  }
+  .sb-live-preview code { color: #fca5a5; }
+  .sb-live-preview p code,
+  .sb-live-preview li code {
+    background: rgba(148, 163, 184, .18);
+    border: 1px solid rgba(148, 163, 184, .3);
+    border-radius: .35rem;
+    padding: .1rem .35rem;
+  }
+  .sb-live-preview blockquote {
+    border-left: 3px solid #475569;
+    padding-left: .8rem;
+    color: #cbd5e1;
+  }
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h4 mb-0">{{ 'Create File' if mode == 'create' else 'Edit File' }}</h1>
+  <h1 class="h4 mb-0 text-white">{{ 'Create File' if mode == 'create' else 'Edit File' }}</h1>
   <a class="btn btn-secondary" href="{{ url_for('sb.sb_file_view', file_id=file.file_id) if mode == 'edit' and file else (url_for('sb.sb_home', folder_id=selected_folder_id) if selected_folder_id else url_for('sb.sb_home')) }}">Back</a>
 </div>
+
+<nav aria-label="File path" class="mb-3">
+  <ol class="breadcrumb mb-0">
+    {% for c in file_path or [] %}
+      <li class="breadcrumb-item">
+        <a href="{{ url_for('sb.sb_home', folder_id=c.folder_id) if c.folder_id is not none else url_for('sb.sb_home') }}">{{ c.folder_name }}</a>
+      </li>
+    {% endfor %}
+    <li class="breadcrumb-item active" aria-current="page">{{ file.title if file and file.title else ('New File' if mode == 'create' else 'Edit File') }}</li>
+  </ol>
+</nav>
 {% if message == 'created' %}<div class="alert alert-success">File created. Continue writing — autosave is active.</div>{% endif %}
 {% if message == 'updated' %}<div class="alert alert-success">File updated successfully.</div>{% endif %}
 {% if error_message %}<div class="alert alert-danger">{{ error_message }}</div>{% endif %}
@@ -121,11 +163,21 @@
       <textarea id="content_md" class="form-control font-monospace" name="content_md" rows="18" required>{{ file.content_md if file else '' }}</textarea>
     </div>
     <div class="card-body border-top">
-      <button class="btn btn-secondary" type="submit">{{ 'Create File' if mode == 'create' else 'Save Changes' }}</button>
+      <button class="btn btn-primary" type="submit">{{ 'Create File' if mode == 'create' else 'Save Changes' }}</button>
       <span class="text-muted small ms-2">Tip: Use side-by-side preview from toolbar for Obsidian-like flow.</span>
     </div>
   </div>
 </form>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span class="fw-semibold">Read View Preview (server render)</span>
+    <small id="previewStatus" class="text-muted">Ready</small>
+  </div>
+  <div class="card-body">
+    <div id="serverPreview" class="sb-live-preview">{{ preview_html|safe }}</div>
+  </div>
+</div>
 
 {% if mode == 'edit' %}
 <div class="card shadow-sm">
@@ -164,6 +216,8 @@
   const textarea = document.getElementById('content_md');
   const status = document.getElementById('autosaveStatus');
   const draftFileIdInput = document.getElementById('draft_file_id');
+  const previewEl = document.getElementById('serverPreview');
+  const previewStatus = document.getElementById('previewStatus');
   const titleInput = document.querySelector('input[name="title"]');
   const folderInput = document.querySelector('select[name="folder_id"]');
   const tagsInput = document.querySelector('input[name="tags"]');
@@ -180,7 +234,7 @@
       'heading', 'heading-smaller', 'heading-bigger', '|',
       'quote', 'unordered-list', 'ordered-list', '|',
       'link', 'image', 'table', 'code', '|',
-      'preview', 'side-by-side', 'fullscreen', '|',
+      'fullscreen', '|',
       'guide'
     ],
     status: ['lines', 'words', 'cursor'],
@@ -190,6 +244,38 @@
     },
     autosave: { enabled: false }
   });
+
+  const previewEndpoint = '{{ url_for("sb.sb_markdown_preview") }}';
+  let previewTimer = null;
+  let previewInFlight = false;
+
+  async function refreshServerPreview() {
+    if (!previewEl || previewInFlight) return;
+    previewInFlight = true;
+    if (previewStatus) previewStatus.textContent = 'Rendering...';
+    try {
+      const form = new FormData();
+      form.append('csrf_token', '{{ csrf_token }}');
+      form.append('content_md', editor.value() || '');
+      const resp = await fetch(previewEndpoint, { method: 'POST', body: form, credentials: 'same-origin' });
+      const data = await resp.json();
+      if (resp.ok && data && data.ok) {
+        previewEl.innerHTML = data.html || '';
+        if (previewStatus) previewStatus.textContent = 'Synced';
+      } else {
+        if (previewStatus) previewStatus.textContent = 'Preview failed';
+      }
+    } catch (_) {
+      if (previewStatus) previewStatus.textContent = 'Preview failed';
+    } finally {
+      previewInFlight = false;
+    }
+  }
+
+  function schedulePreviewRefresh() {
+    if (previewTimer) clearTimeout(previewTimer);
+    previewTimer = setTimeout(refreshServerPreview, 350);
+  }
 
   function setStatus(text, isError = false) {
     if (!status) return;
@@ -285,6 +371,7 @@
   }
 
   editor.codemirror.on('change', scheduleAutosave);
+  editor.codemirror.on('change', schedulePreviewRefresh);
   editor.codemirror.on('blur', () => autosaveNow('Saving...'));
   if (titleInput) {
     titleInput.addEventListener('input', scheduleAutosave);
@@ -303,5 +390,6 @@
   if (!currentFileId) {
     setStatus('Autosave will start after you type content');
   }
+  setTimeout(refreshServerPreview, 0);
 </script>
 {% endblock %}

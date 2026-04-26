@@ -1,5 +1,7 @@
 import math
 import re
+import json
+from typing import Any
 
 import oracledb
 
@@ -8,6 +10,15 @@ from app.core.db import get_db_connection
 
 KEY_RE = re.compile(r"^[A-Za-z0-9_:\-.]{1,120}$")
 SHORTCUT_CATEGORY = "shortcut"
+ICON_CLASS_RE = re.compile(r"^[A-Za-z0-9\-\s]{3,80}$")
+
+
+def _to_text(value: Any) -> str:
+    if value is None:
+        return ""
+    if hasattr(value, "read"):
+        return value.read() or ""
+    return str(value)
 
 
 def _normalize_status(status: str | None) -> str:
@@ -49,7 +60,7 @@ def list_shortcuts(search: str | None, status: str | None, page: int, page_size:
     offset = (page - 1) * page_size
     status = _normalize_status(status)
 
-    where = ["LOWER(NVL(category, '')) = :category"]
+    where = ["LOWER(TRIM(NVL(category, ''))) = :category"]
     params: dict[str, object] = {"category": SHORTCUT_CATEGORY}
 
     if status == "active":
@@ -102,7 +113,7 @@ def get_shortcut(item_key: str) -> dict | None:
     sql = """
         SELECT item_key, item_value, additional_info, category, is_active, created_at, updated_at
         FROM kv_store
-        WHERE item_key = :item_key AND LOWER(NVL(category, '')) = :category
+        WHERE item_key = :item_key AND LOWER(TRIM(NVL(category, ''))) = :category
     """
     with get_db_connection() as conn:
         with conn.cursor() as cur:
@@ -159,7 +170,7 @@ def update_shortcut(item_key: str, item_value: str, path: str, is_active: str = 
             additional_info = :additional_info,
             is_active = :is_active,
             category = :category
-        WHERE item_key = :item_key AND LOWER(NVL(category, '')) = :category
+        WHERE item_key = :item_key AND LOWER(TRIM(NVL(category, ''))) = :category
     """
     with get_db_connection() as conn:
         with conn.cursor() as cur:
@@ -178,7 +189,7 @@ def update_shortcut(item_key: str, item_value: str, path: str, is_active: str = 
 
 
 def deactivate_shortcut(item_key: str) -> bool:
-    sql = "UPDATE kv_store SET is_active = 'N' WHERE item_key = :item_key AND LOWER(NVL(category, '')) = :category"
+    sql = "UPDATE kv_store SET is_active = 'N' WHERE item_key = :item_key AND LOWER(TRIM(NVL(category, ''))) = :category"
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, {"item_key": item_key, "category": SHORTCUT_CATEGORY})
@@ -187,7 +198,7 @@ def deactivate_shortcut(item_key: str) -> bool:
 
 
 def restore_shortcut(item_key: str) -> bool:
-    sql = "UPDATE kv_store SET is_active = 'Y' WHERE item_key = :item_key AND LOWER(NVL(category, '')) = :category"
+    sql = "UPDATE kv_store SET is_active = 'Y' WHERE item_key = :item_key AND LOWER(TRIM(NVL(category, ''))) = :category"
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, {"item_key": item_key, "category": SHORTCUT_CATEGORY})
@@ -196,7 +207,7 @@ def restore_shortcut(item_key: str) -> bool:
 
 
 def delete_shortcut(item_key: str) -> bool:
-    sql = "DELETE FROM kv_store WHERE item_key = :item_key AND LOWER(NVL(category, '')) = :category"
+    sql = "DELETE FROM kv_store WHERE item_key = :item_key AND LOWER(TRIM(NVL(category, ''))) = :category"
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, {"item_key": item_key, "category": SHORTCUT_CATEGORY})
@@ -208,25 +219,91 @@ def list_nav_shortcuts() -> list[dict]:
     sql = """
         SELECT item_key, item_value, additional_info
         FROM kv_store
-        WHERE LOWER(NVL(category, '')) = :category
-          AND is_active = 'Y'
+        WHERE LOWER(TRIM(NVL(category, ''))) IN ('shortcut', 'shortcuts')
+          AND UPPER(NVL(is_active, 'N')) = 'Y'
         ORDER BY item_value
     """
     with get_db_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(sql, {"category": SHORTCUT_CATEGORY})
+            cur.execute(sql)
             rows = cur.fetchall()
 
-    out = []
+    def _normalize_path(raw: str | None) -> str:
+        value = _to_text(raw).strip()
+        if not value:
+            return ""
+        low = value.lower()
+        if low.startswith("http://") or low.startswith("https://"):
+            return ""
+
+        # If text contains an embedded internal path, extract it.
+        embedded = re.search(r"/[A-Za-z0-9_\-./?=&%]*", value)
+        if embedded:
+            value = embedded.group(0).strip()
+
+        # Accept slug-like values and coerce to /slug.
+        if not value.startswith("/"):
+            value = f"/{value}"
+
+        # Normalize repeated slashes at start, keep one.
+        value = "/" + value.lstrip("/")
+
+        if " " in value:
+            value = value.replace(" ", "-")
+        return value
+
+    def _extract_payload(raw: str | None) -> dict:
+        text = _to_text(raw).strip()
+        if not text.startswith("{"):
+            return {}
+        try:
+            payload = json.loads(text)
+            return payload if isinstance(payload, dict) else {}
+        except Exception:
+            return {}
+
+    out: list[dict] = []
+    seen_paths: set[str] = set()
+
     for item_key, item_value, additional_info in rows:
-        path = (additional_info or "").strip()
-        if not path.startswith("/") or path.startswith("//"):
-            continue
-        out.append(
-            {
-                "key": item_key,
-                "title": item_value or item_key,
-                "path": path,
-            }
+        key_text = _to_text(item_key).strip()
+        value_text = _to_text(item_value).strip()
+        info_text = _to_text(additional_info).strip()
+
+        payload = _extract_payload(additional_info)
+
+        title = (
+            _to_text(payload.get("title") or payload.get("name") or "").strip()
+            or value_text
+            or key_text
+            or "Shortcut"
         )
+
+        icon_candidate = _to_text(payload.get("icon") or "").strip()
+        icon_class = icon_candidate if icon_candidate and ICON_CLASS_RE.fullmatch(icon_candidate) else None
+
+        path_candidates = [
+            payload.get("path"),
+            payload.get("url"),
+            payload.get("route"),
+            payload.get("href"),
+            info_text,
+            value_text,
+            key_text,
+        ]
+
+        path = ""
+        for candidate in path_candidates:
+            path = _normalize_path(candidate)
+            if path:
+                break
+
+        if not path:
+            continue
+        if path in seen_paths:
+            continue
+        seen_paths.add(path)
+
+        out.append({"key": key_text or path, "title": title, "path": path, "icon_class": icon_class})
+
     return out

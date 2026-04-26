@@ -2,32 +2,49 @@
 {% from "ft/_macros.html" import llm_summary_cell, llm_actions %}
 {% block title %}FT LLM Calls · Rover{% endblock %}
 {% block content %}
+<style>
+  .ft-panel {
+    background: #0f172a;
+    border: 1px solid #1e293b !important;
+    border-radius: .85rem !important;
+    box-shadow: 0 .35rem 1rem rgba(2, 6, 23, .25);
+  }
+  .ft-table thead th {
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    font-size: .72rem;
+    border-color: #1e293b;
+    background: rgba(30, 41, 59, .35);
+  }
+</style>
+
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h4 mb-0">Finance LLM Calls</h1>
+  <h1 class="h4 mb-0 text-white">Finance LLM Calls</h1>
   <div class="d-flex gap-2">
-    <a class="btn btn-secondary" href="{{ url_for('ft.ft_dashboard') }}">Dashboard</a>
-    <a class="btn btn-secondary" href="{{ url_for('ft.ft_transactions_list') }}">Transactions</a>
+    <a class="btn btn-secondary" href="{{ url_for('ft.ft_dashboard') }}"><i class="fa-solid fa-chart-pie me-1"></i>Dashboard</a>
+    <a class="btn btn-secondary" href="{{ url_for('ft.ft_transactions_list') }}"><i class="fa-solid fa-arrow-right-arrow-left me-1"></i>Transactions</a>
   </div>
 </div>
 
-<div class="card shadow-sm mb-3">
+<div class="ft-panel p-3 mb-3">
   <div class="card-body">
     <form method="get" class="row g-2">
       <div class="col-md-4">
         <input class="form-control" name="transaction_id" placeholder="Filter by transaction ID" value="{{ transaction_id }}" />
       </div>
       <div class="col-md-2 d-grid">
-        <button class="btn btn-secondary" type="submit">Filter</button>
+        <button class="btn btn-primary" type="submit">Filter</button>
       </div>
     </form>
   </div>
 </div>
 
-<div class="card shadow-sm">
+<div class="ft-panel">
   <div class="card-body">
     <div class="table-responsive">
-      <table class="table table-striped mb-0 align-middle">
-        <thead class="table-dark">
+      <table class="table table-striped mb-0 align-middle ft-table">
+        <thead>
           <tr><th>LLM Call</th><th>Status</th><th class="text-end" style="width: 1%; white-space: nowrap;">Actions</th></tr>
         </thead>
         <tbody>

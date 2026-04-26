@@ -1,78 +1,266 @@
 {% extends "shared/base.html" %}
-{% from "ft/_macros.html" import tx_summary_cell, tx_actions %}
 {% block title %}Finance Tracker · Rover{% endblock %}
 {% block content %}
 <style>
-  .ft-kpi-card .card { height: 100%; }
-  .ft-kpi-card .card-body {
-    min-height: 120px;
+  .ft-wrap {
+    max-width: 100%;
+  }
+  .ft-panel,
+  .ft-kpi {
+    background: #0f172a;
+    border: 1px solid #1e293b !important;
+    border-radius: .85rem !important;
+    box-shadow: 0 .35rem 1rem rgba(2, 6, 23, .25);
+  }
+  .ft-kpi {
+    min-height: 130px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    padding: 1rem;
+  }
+  .ft-kpi-title {
+    font-size: .82rem;
+    color: #94a3b8;
+    font-weight: 500;
+  }
+  .ft-kpi-value {
+    font-size: 1.5rem;
+    line-height: 1.2;
+    font-weight: 700;
+  }
+  .ft-kpi-note {
+    font-size: .74rem;
+    color: #64748b;
+  }
+  .ft-icon-chip {
+    width: 28px;
+    height: 28px;
+    border-radius: .45rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .82rem;
+  }
+  .ft-chip-danger { background: rgba(244, 63, 94, .14); color: #fb7185; }
+  .ft-chip-success { background: rgba(16, 185, 129, .14); color: #34d399; }
+  .ft-chip-neutral { background: rgba(100, 116, 139, .2); color: #cbd5e1; }
+  .ft-chip-pending { background: rgba(251, 191, 36, .14); color: #fbbf24; }
+  .ft-quick-input {
+    background: #020617;
+    border-color: #334155;
+    color: #e2e8f0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
+  .ft-quick-input:focus {
+    background: #020617;
+    color: #f8fafc;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 .2rem rgba(99, 102, 241, .2);
+  }
+  .ft-pending-table thead th {
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    font-size: .72rem;
+    border-color: #1e293b;
+    background: rgba(30, 41, 59, .35);
+  }
+  .ft-pending-table tbody td {
+    border-color: #1e293b;
+    background: transparent;
+  }
+  .ft-pending-row:hover td {
+    background: rgba(30, 41, 59, .28);
+  }
+  .ft-pending-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    border: 1px solid #334155;
+    background: #111827;
+    color: #94a3b8;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .85rem;
+  }
+  .ft-pending-badge {
+    font-size: .68rem;
+    padding: .2rem .45rem;
+    border-radius: .35rem;
+    border: 1px solid rgba(251, 191, 36, .35);
+    background: rgba(251, 191, 36, .12);
+    color: #fbbf24;
+    font-weight: 600;
   }
 </style>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h4 mb-0">Finance Tracker</h1>
-  <div class="d-flex gap-2">
-    <a class="btn btn-secondary" href="{{ url_for('ft.ft_accounts_list') }}">Accounts</a>
-    <a class="btn btn-secondary" href="{{ url_for('ft.ft_llm_calls_list') }}">LLM Calls</a>
-    <a class="btn btn-secondary" href="{{ url_for('ft.ft_transactions_list') }}">Transactions</a>
-  </div>
-</div>
-
-<div class="row g-3 mb-3">
-  <div class="col-12 col-md-4 col-xl-2 ft-kpi-card"><div class="card"><div class="card-body"><div class="text-muted small">Today Spend</div><div class="h5 mb-0 text-danger">{{ '%.2f'|format(summary.today_spend) }}</div><div class="small text-muted mt-1">Expenses only</div></div></div></div>
-  <div class="col-12 col-md-4 col-xl-2 ft-kpi-card"><div class="card"><div class="card-body"><div class="text-muted small">This Month Spend</div><div class="h5 mb-0 text-danger">{{ '%.2f'|format(summary.month_spend) }}</div><div class="small text-muted mt-1">Expenses only</div></div></div></div>
-  <div class="col-12 col-md-4 col-xl-2 ft-kpi-card"><div class="card"><div class="card-body"><div class="text-muted small">Total Income</div><div class="h5 mb-0 text-success">{{ '%.2f'|format(summary.total_income) }}</div><div class="small text-muted mt-1">All-time</div></div></div></div>
-  <div class="col-12 col-md-4 col-xl-2 ft-kpi-card"><div class="card"><div class="card-body"><div class="text-muted small">Total Expense</div><div class="h5 mb-0 text-danger">{{ '%.2f'|format(summary.total_expense) }}</div><div class="small text-muted mt-1">All-time</div></div></div></div>
-  <div class="col-12 col-md-4 col-xl-2 ft-kpi-card"><div class="card"><div class="card-body"><div class="text-muted small">Net</div><div class="h5 mb-0">{{ '%.2f'|format(summary.net_amount) }}</div><div class="small text-muted mt-1">Income - Expense</div></div></div></div>
-  <div class="col-12 col-md-4 col-xl-2 ft-kpi-card"><div class="card"><div class="card-body"><div class="text-muted small">Pending</div><div class="h5 mb-0">{{ summary.pending_count }}</div><div class="small text-muted mt-1">LLM T: {{ summary.llm_calls_today }} • A: {{ summary.llm_calls_total }}</div></div></div></div>
-</div>
-
-<div class="card shadow-sm mb-3">
-  <div class="card-header fw-semibold">Quick Add Raw Transaction</div>
-  <div class="card-body">
-    <form id="ftQuickAddForm" class="row g-2">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-      <div class="col-md-10">
-        <input class="form-control" name="raw_text" id="ftQuickRawText" placeholder="e.g. income 55000 from salary account for april" required />
-      </div>
-      <div class="col-md-2 d-grid">
-        <button class="btn btn-secondary" type="submit" id="ftQuickAddBtn">Add</button>
-      </div>
-    </form>
-    <div id="ftQuickAddMsg" class="small mt-2 text-muted"></div>
-  </div>
-</div>
-
-<div class="card shadow-sm">
-  <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
-    <span>Pending LLM Queue (Top 10)</span>
-    <div class="d-flex gap-2">
-      <form method="post" action="{{ url_for('ft.ft_transactions_process_pending') }}" class="m-0">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-        <button class="btn btn-sm btn-secondary" type="submit">Process Pending</button>
-      </form>
-      <a class="btn btn-sm btn-secondary" href="{{ url_for('ft.ft_transactions_list', status='PENDING') }}">Open Full Queue</a>
+<div class="ft-wrap">
+  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center mb-4 gap-3">
+    <div>
+      <h1 class="h4 mb-1 text-white">Dashboard Overview</h1>
+      <p class="text-muted mb-0">Manage and track your financial transactions via LLM.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-secondary" href="{{ url_for('ft.ft_accounts_list') }}"><i class="fa-regular fa-credit-card me-1"></i>Accounts</a>
+      <a class="btn btn-secondary" href="{{ url_for('ft.ft_llm_calls_list') }}"><i class="fa-solid fa-microchip me-1"></i>LLM Calls</a>
+      <a class="btn btn-secondary" href="{{ url_for('ft.ft_transactions_list') }}"><i class="fa-solid fa-arrow-right-arrow-left me-1"></i>Transactions</a>
     </div>
   </div>
-  <div class="card-body">
+
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-md-6 col-xl-2">
+      <div class="ft-kpi">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="ft-kpi-title">Today Spend</div><span class="ft-icon-chip ft-chip-danger"><i class="fa-solid fa-arrow-trend-down"></i></span>
+        </div>
+        <div>
+          <div class="ft-kpi-value text-danger">{{ '%.2f'|format(summary.today_spend) }}</div>
+          <div class="ft-kpi-note">Expenses only</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-2">
+      <div class="ft-kpi">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="ft-kpi-title">This Month Spend</div><span class="ft-icon-chip ft-chip-danger"><i class="fa-regular fa-calendar-minus"></i></span>
+        </div>
+        <div>
+          <div class="ft-kpi-value text-danger">{{ '%.2f'|format(summary.month_spend) }}</div>
+          <div class="ft-kpi-note">Expenses only</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-2">
+      <div class="ft-kpi">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="ft-kpi-title">Total Income</div><span class="ft-icon-chip ft-chip-success"><i class="fa-solid fa-arrow-trend-up"></i></span>
+        </div>
+        <div>
+          <div class="ft-kpi-value text-success">{{ '%.2f'|format(summary.total_income) }}</div>
+          <div class="ft-kpi-note">All-time</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-2">
+      <div class="ft-kpi">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="ft-kpi-title">Total Expense</div><span class="ft-icon-chip ft-chip-danger"><i class="fa-solid fa-wallet"></i></span>
+        </div>
+        <div>
+          <div class="ft-kpi-value text-danger">{{ '%.2f'|format(summary.total_expense) }}</div>
+          <div class="ft-kpi-note">All-time</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-2">
+      <div class="ft-kpi">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="ft-kpi-title">Net</div><span class="ft-icon-chip ft-chip-neutral"><i class="fa-solid fa-scale-balanced"></i></span>
+        </div>
+        <div>
+          <div class="ft-kpi-value text-white">{{ '%.2f'|format(summary.net_amount) }}</div>
+          <div class="ft-kpi-note">Income - Expense</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-2">
+      <div class="ft-kpi">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="ft-kpi-title">Pending queue</div><span class="ft-icon-chip ft-chip-pending"><i class="fa-regular fa-clock"></i></span>
+        </div>
+        <div>
+          <div class="ft-kpi-value text-white">{{ summary.pending_count }}</div>
+          <div class="ft-kpi-note">LLM T: {{ summary.llm_calls_today }} • A: {{ summary.llm_calls_total }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ft-panel p-4 mb-4">
+    <div class="mb-3">
+      <h2 class="h6 mb-1 text-white">Quick Add Raw Transaction</h2>
+      <p class="text-muted small mb-0">Enter a natural language string to queue for LLM processing.</p>
+    </div>
+    <form id="ftQuickAddForm" class="row g-2 align-items-center">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}"/>
+      <div class="col-lg-10">
+        <div class="position-relative">
+          <i class="fa-solid fa-terminal position-absolute top-50 translate-middle-y" style="left: .85rem; color:#64748b;"></i>
+          <input class="form-control ft-quick-input ps-5" name="raw_text" id="ftQuickRawText" placeholder="e.g. income 55000 from salary account for april" required />
+        </div>
+      </div>
+      <div class="col-lg-2 d-grid">
+        <button class="btn btn-primary" type="submit" id="ftQuickAddBtn"><i class="fa-solid fa-plus me-1"></i>Queue Transaction</button>
+      </div>
+    </form>
+    <div id="ftQuickAddMsg" class="small mt-3 text-muted"></div>
+  </div>
+
+  <div class="ft-panel overflow-hidden">
+    <div class="px-4 py-3 border-bottom" style="border-color:#1e293b !important; background: rgba(15, 23, 42, .35);">
+      <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-2">
+        <div>
+          <h2 class="h6 mb-1 text-white">Pending LLM Queue</h2>
+          <p class="small text-muted mb-0">Showing the top recent entries awaiting process.</p>
+        </div>
+        <div class="d-flex gap-2">
+          <form method="post" action="{{ url_for('ft.ft_transactions_process_pending') }}" class="m-0">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button class="btn btn-secondary btn-sm" type="submit"><i class="fa-solid fa-bolt me-1 text-warning"></i>Process Pending</button>
+          </form>
+          <a class="btn btn-secondary btn-sm" href="{{ url_for('ft.ft_transactions_list', status='PENDING') }}"><i class="fa-solid fa-list me-1"></i>Open Full Queue</a>
+        </div>
+      </div>
+    </div>
     <div class="table-responsive">
-      <table class="table table-striped mb-0 align-middle">
-        <thead class="table-dark">
-          <tr><th>Pending Transaction</th><th class="text-end" style="width: 1%; white-space: nowrap;">Actions</th></tr>
+      <table class="table mb-0 align-middle ft-pending-table">
+        <thead>
+          <tr>
+            <th class="px-4 py-3">Pending Transaction details</th>
+            <th class="text-end px-4 py-3" style="width:1%; white-space:nowrap;">Actions</th>
+          </tr>
         </thead>
         <tbody>
         {% for item in pending_items %}
-          <tr>
-            <td>{{ tx_summary_cell(item, pending_badge=True) }}</td>
-            <td class="text-end">
-              {{ tx_actions(item, csrf_token, allow_mark_pending=False, allow_delete=True) }}
+          <tr class="ft-pending-row">
+            <td class="px-4 py-3">
+              <div class="d-flex align-items-start gap-3">
+                <span class="ft-pending-icon"><i class="fa-solid fa-receipt"></i></span>
+                <div>
+                  <div class="fw-semibold text-white">{{ item.description or item.category or ('Transaction #' ~ item.transaction_id) }}</div>
+                  <div class="d-flex flex-wrap gap-2 align-items-center mt-1">
+                    <span class="ft-pending-badge">Pending Analysis</span>
+                    <span class="small text-muted"><i class="fa-regular fa-calendar me-1"></i>{{ item.tx_date_human }}</span>
+                    <span class="small {% if item.amount >= 0 %}text-success{% else %}text-danger{% endif %}" style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">{% if item.amount >= 0 %}+{% endif %}{{ '%.2f'|format(item.amount) }}</span>
+                  </div>
+                  <div class="small text-muted mt-1">
+                    <span class="badge rv-badge rv-badge-dark me-1">#{{ item.transaction_id }}</span>
+                    <span class="badge rv-badge rv-badge-neutral me-1">{{ item.category or 'uncategorized' }}</span>
+                    <span>{{ item.account_name or '-' }}</span>
+                  </div>
+                  {% if item.raw_text %}
+                  <div class="small mt-2 px-2 py-1 rounded" style="background:#020617; border:1px solid #1e293b; color:#94a3b8; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">
+                    Raw: {{ item.raw_text }}
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+            </td>
+            <td class="text-end px-4 py-3">
+              <div class="btn-group btn-group-sm border border-secondary rounded" role="group" aria-label="Row actions">
+                <a class="btn btn-secondary" href="{{ url_for('ft.ft_transaction_detail', transaction_id=item.transaction_id) }}" title="View"><i class="fa-solid fa-eye"></i></a>
+                <a class="btn btn-secondary" href="{{ url_for('ft.ft_transaction_edit_page', transaction_id=item.transaction_id) }}" title="Edit"><i class="fa-regular fa-pen-to-square"></i></a>
+                <form method="post" action="{{ url_for('ft.ft_transaction_delete', transaction_id=item.transaction_id) }}" class="d-inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                  <button class="btn btn-secondary" type="submit" title="Delete" onclick="return confirm('Delete this transaction?');"><i class="fa-solid fa-trash"></i></button>
+                </form>
+              </div>
             </td>
           </tr>
         {% else %}
-          <tr><td colspan="2" class="text-center text-muted py-3">No pending transactions.</td></tr>
+          <tr><td colspan="2" class="text-center text-muted py-4">No pending transactions.</td></tr>
         {% endfor %}
         </tbody>
       </table>
@@ -91,7 +279,7 @@
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
       msgEl.className = 'small mt-2 text-muted';
-      msgEl.textContent = 'Adding...';
+      msgEl.textContent = 'Queueing...';
       btn.disabled = true;
 
       try {
@@ -106,9 +294,9 @@
           throw new Error(data.error || 'Failed to add raw transaction');
         }
         msgEl.className = 'small mt-2 text-success';
-        msgEl.textContent = data.message || 'Raw transaction added';
+        msgEl.textContent = data.message || 'Successfully added to pending queue.';
         rawInput.value = '';
-        setTimeout(() => window.location.reload(), 500);
+        setTimeout(() => window.location.reload(), 450);
       } catch (err) {
         msgEl.className = 'small mt-2 text-danger';
         msgEl.textContent = err.message || 'Failed to add raw transaction';

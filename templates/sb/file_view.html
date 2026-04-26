@@ -1,8 +1,43 @@
 {% extends "shared/base.html" %}
 {% block title %}{{ file.title }} · Secondary Brain{% endblock %}
 {% block content %}
+<style>
+  .markdown-body {
+    line-height: 1.7;
+    color: #e5e7eb;
+  }
+  .markdown-body h1, .markdown-body h2, .markdown-body h3,
+  .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+    color: #f8fafc;
+    margin-top: 1.2rem;
+    margin-bottom: .6rem;
+  }
+  .markdown-body pre {
+    background: #111827;
+    border: 1px solid #334155;
+    border-radius: .5rem;
+    padding: .75rem;
+    overflow-x: auto;
+  }
+  .markdown-body code {
+    color: #fca5a5;
+  }
+  .markdown-body p code,
+  .markdown-body li code {
+    background: rgba(148, 163, 184, .18);
+    border: 1px solid rgba(148, 163, 184, .3);
+    border-radius: .35rem;
+    padding: .1rem .35rem;
+  }
+  .markdown-body blockquote {
+    border-left: 3px solid #475569;
+    padding-left: .8rem;
+    color: #cbd5e1;
+  }
+</style>
+
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h4 mb-0">{{ file.title }}</h1>
+  <h1 class="h4 mb-0 text-white">{{ file.title }}</h1>
   <div class="d-flex gap-2">
     <a class="btn btn-secondary" href="{{ url_for('sb.sb_home', folder_id=file.folder_id) }}">Back</a>
     <a class="btn btn-secondary" href="{{ url_for('sb.sb_file_edit_page', file_id=file.file_id) }}">Edit</a>
@@ -10,7 +45,7 @@
     <form method="post" action="{{ url_for('sb.sb_file_set_public', file_id=file.file_id) }}" class="m-0">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
       <input type="hidden" name="make_public" value="1" />
-      <button class="btn btn-secondary" type="submit">Make Public</button>
+      <button class="btn btn-primary" type="submit">Make Public</button>
     </form>
     {% endif %}
   </div>
@@ -40,7 +75,7 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
         <input type="hidden" name="make_public" value="1" />
         <input type="hidden" name="regenerate" value="1" />
-        <button class="btn btn-sm btn-secondary" type="submit">Regenerate Link</button>
+        <button class="btn btn-sm btn-primary" type="submit">Regenerate Link</button>
       </form>
       <form method="post" action="{{ url_for('sb.sb_file_set_public', file_id=file.file_id) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />

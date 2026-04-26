@@ -74,6 +74,12 @@ def render_markdown_safely(content_md: str) -> str:
         content_md = str(content_md)
 
     extensions = ["extra", "sane_lists", "nl2br"]
+    extension_configs = {
+        "pymdownx.tasklist": {
+            "custom_checkbox": False,
+            "clickable_checkbox": False,
+        }
+    }
     optional_exts = ["pymdownx.tilde", "pymdownx.tasklist", "pymdownx.superfences"]
     for ext in optional_exts:
         module_name = ext.split(".", 1)[0]
@@ -83,7 +89,7 @@ def render_markdown_safely(content_md: str) -> str:
         except ModuleNotFoundError:
             continue
 
-    raw_html = markdown.markdown(content_md, extensions=extensions)
+    raw_html = markdown.markdown(content_md, extensions=extensions, extension_configs=extension_configs)
     allowed_tags = set(bleach.sanitizer.ALLOWED_TAGS).union(
         {
             "p",
@@ -117,6 +123,7 @@ def render_markdown_safely(content_md: str) -> str:
         attributes={
             "a": ["href", "title", "target"],
             "code": ["class"],
+            "pre": ["class"],
             "input": ["type", "checked", "disabled"],
             "ul": ["class"],
             "li": ["class"],
@@ -266,7 +273,33 @@ def sb_home():
 
 @sb_bp.get("/sb/graph")
 def sb_graph():
-    return render_template("sb/graph.html")
+    graph_error = None
+    graph_data = {"scope": "all", "nodes": [], "links": []}
+    try:
+        graph_data = get_graph_snapshot(scope="all", root_folder_id=None)
+        for node in graph_data.get("nodes", []):
+            node["created_at"] = _serialize_timestamp(node.get("created_at"))
+            node["updated_at"] = _serialize_timestamp(node.get("updated_at"))
+            node["created_at_human"] = _humanize_timestamp(node.get("created_at"))
+            node["updated_at_human"] = _humanize_timestamp(node.get("updated_at"))
+            if node.get("kind") == "folder":
+                node["go_to_url"] = url_for("sb.sb_home", folder_id=node.get("folder_id"))
+            elif node.get("kind") == "root_hub":
+                node["go_to_url"] = None
+            else:
+                node["go_to_url"] = url_for("sb.sb_file_view", file_id=node.get("file_id"))
+    except Exception:
+        graph_error = "Unable to load graph data. Please check DB/config and try again."
+
+    return render_template("sb/graph.html", graph_data=graph_data, graph_error=graph_error)
+
+
+@sb_bp.post("/sb/markdown/preview")
+def sb_markdown_preview():
+    if not is_valid_csrf(request.form.get("csrf_token")):
+        return jsonify({"ok": False, "error": "Session expired. Please try again."}), 400
+    content_md = request.form.get("content_md", "")
+    return jsonify({"ok": True, "html": render_markdown_safely(content_md)})
 
 
 @sb_bp.get("/sb/graph/data")
@@ -379,6 +412,7 @@ def sb_new_file_page():
         "sb/file_editor.html",
         mode="create",
         file=None,
+        file_path=_build_breadcrumb(folder_id),
         selected_folder_id=folder_id,
         all_folders=list_active_folders(),
         links=[],
@@ -412,6 +446,7 @@ def sb_new_file_submit():
             "sb/file_editor.html",
             mode="create",
             file={"title": title, "content_md": content_md, "tags": tags},
+            file_path=_build_breadcrumb(folder_id),
             selected_folder_id=folder_id,
             all_folders=list_active_folders(),
             links=[],
@@ -515,6 +550,7 @@ def sb_file_edit_page(file_id: int):
         "sb/file_editor.html",
         mode="edit",
         file=file,
+        file_path=_build_file_path(file),
         selected_folder_id=file.get("folder_id"),
         all_folders=list_active_folders(),
         links=list_file_links(file_id),
@@ -545,6 +581,7 @@ def sb_file_edit_submit(file_id: int):
             "sb/file_editor.html",
             mode="edit",
             file=file_data,
+            file_path=_build_breadcrumb(folder_id),
             selected_folder_id=folder_id,
             all_folders=list_active_folders(),
             links=list_file_links(file_id),

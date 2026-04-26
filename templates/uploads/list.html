@@ -2,8 +2,8 @@
 {% block title %}Uploads · Rover{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h4 mb-0">Uploads</h1>
-  <a class="btn btn-secondary {% if not upload_ready %}disabled{% endif %}" href="{{ url_for('uploads.uploads_new_page') }}">Upload File</a>
+  <h1 class="h4 mb-0 text-white">Uploads</h1>
+  <a class="btn btn-primary {% if not upload_ready %}disabled{% endif %}" href="{{ url_for('uploads.uploads_new_page') }}"><i class="fa-solid fa-upload me-1"></i>Upload File</a>
 </div>
 
 {% if not upload_ready %}
@@ -17,7 +17,7 @@
         <input class="form-control" name="q" placeholder="Search title/file/notes" value="{{ search }}" />
       </div>
       <div class="col-md-3 d-grid">
-        <button class="btn btn-secondary" type="submit">Search</button>
+        <button class="btn btn-primary" type="submit">Search</button>
       </div>
     </form>
   </div>

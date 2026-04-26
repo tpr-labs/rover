@@ -3,9 +3,9 @@
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-12 col-md-7 col-lg-5">
-    <div class="card shadow-sm">
+    <div class="card shadow-sm" style="background:#0f172a; border-color:#1e293b !important;">
       <div class="card-body p-4">
-        <h1 class="h5 mb-2">Sign in</h1>
+        <h1 class="h5 mb-2 text-white">Sign in</h1>
         <p class="text-muted mb-3">Enter your access token to continue.</p>
         {% if error_message %}
         <div class="alert alert-danger py-2" role="alert">{{ error_message }}</div>
@@ -17,7 +17,7 @@
             <label class="form-label">Token</label>
             <input class="form-control" type="password" name="token" required autofocus />
           </div>
-          <button class="btn btn-secondary w-100" type="submit">Continue</button>
+          <button class="btn btn-primary w-100" type="submit">Continue</button>
         </form>
       </div>
     </div>

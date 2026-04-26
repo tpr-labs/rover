@@ -1,15 +1,24 @@
 {% extends "shared/base.html" %}
 {% block title %}FT LLM Call #{{ item.call_id }} · Rover{% endblock %}
 {% block content %}
+<style>
+  .ft-panel {
+    background: #0f172a;
+    border: 1px solid #1e293b !important;
+    border-radius: .85rem !important;
+    box-shadow: 0 .35rem 1rem rgba(2, 6, 23, .25);
+  }
+</style>
+
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h4 mb-0">LLM Call #{{ item.call_id }}</h1>
+  <h1 class="h4 mb-0 text-white">LLM Call #{{ item.call_id }}</h1>
   <div class="d-flex gap-2">
-    <a class="btn btn-secondary" href="{{ url_for('ft.ft_llm_calls_list') }}">Back</a>
-    <a class="btn btn-secondary" href="{{ url_for('ft.ft_dashboard') }}">Dashboard</a>
+    <a class="btn btn-secondary" href="{{ url_for('ft.ft_llm_calls_list') }}"><i class="fa-solid fa-arrow-left me-1"></i>Back</a>
+    <a class="btn btn-secondary" href="{{ url_for('ft.ft_dashboard') }}"><i class="fa-solid fa-chart-pie me-1"></i>Dashboard</a>
   </div>
 </div>
 
-<div class="card shadow-sm mb-3">
+<div class="ft-panel p-3 mb-3">
   <div class="card-body">
     <dl class="row mb-0">
       <dt class="col-sm-3">Transaction ID</dt><dd class="col-sm-9">{{ item.transaction_id or '-' }}</dd>
@@ -25,17 +34,17 @@
   </div>
 </div>
 
-<div class="card shadow-sm mb-3">
+<div class="ft-panel p-3 mb-3">
   <div class="card-header fw-semibold">Normalized Parsed Result</div>
   <div class="card-body"><pre class="mb-0" style="white-space: pre-wrap;">{{ item.normalized_result_json or '-' }}</pre></div>
 </div>
 
-<div class="card shadow-sm mb-3">
+<div class="ft-panel p-3 mb-3">
   <div class="card-header fw-semibold">Request Payload</div>
   <div class="card-body"><pre class="mb-0" style="white-space: pre-wrap;">{{ item.request_payload or '-' }}</pre></div>
 </div>
 
-<div class="card shadow-sm">
+<div class="ft-panel p-3">
   <div class="card-header fw-semibold">Response Payload</div>
   <div class="card-body"><pre class="mb-0" style="white-space: pre-wrap;">{{ item.response_payload or '-' }}</pre></div>
 </div>

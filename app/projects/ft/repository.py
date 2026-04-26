@@ -381,33 +381,33 @@ def list_transactions(
     params: dict[str, object] = {}
     if search:
         where.append(
-            "(LOWER(raw_text) LIKE :search OR LOWER(NVL(description, '')) LIKE :search OR LOWER(NVL(category, '')) LIKE :search)"
+            "(LOWER(t.raw_text) LIKE :search OR LOWER(NVL(t.description, '')) LIKE :search OR LOWER(NVL(t.category, '')) LIKE :search)"
         )
         params["search"] = f"%{search}%"
     if status != "ALL":
-        where.append("status = :status")
+        where.append("t.status = :status")
         params["status"] = status
     if direction != "ALL":
-        where.append("direction = :direction")
+        where.append("t.direction = :direction")
         params["direction"] = direction
     if account_id is not None:
-        where.append("account_id = :account_id")
+        where.append("t.account_id = :account_id")
         params["account_id"] = int(account_id)
 
     if exclude_pending:
         if status == "PENDING":
             status = "ALL"
-        where.append("status <> 'PENDING'")
+        where.append("t.status <> 'PENDING'")
 
     if (start_date or "").strip():
-        where.append("tx_date >= :start_date")
+        where.append("t.tx_date >= :start_date")
         params["start_date"] = _normalize_date(start_date)
     if (end_date or "").strip():
-        where.append("tx_date <= :end_date")
+        where.append("t.tx_date <= :end_date")
         params["end_date"] = _normalize_date(end_date)
 
     where_sql = f"WHERE {' AND '.join(where)}" if where else ""
-    count_sql = f"SELECT COUNT(*) FROM ft_transactions {where_sql}"
+    count_sql = f"SELECT COUNT(*) FROM ft_transactions t {where_sql}"
     list_sql = f"""
         SELECT t.transaction_id, t.raw_text, t.amount, t.tx_date, t.category, t.description,
                t.status, t.direction, t.created_at, t.updated_at, a.account_name, a.account_type, t.account_id

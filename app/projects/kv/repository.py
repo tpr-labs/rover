@@ -247,7 +247,7 @@ def list_dashboard_projects() -> list[dict]:
     sql = """
         SELECT item_key, item_value, additional_info
         FROM kv_store
-        WHERE category = 'dashboard' AND is_active = 'Y'
+        WHERE LOWER(TRIM(NVL(category, ''))) = 'dashboard' AND is_active = 'Y'
         ORDER BY item_value
     """
     default_icon = "fa-solid fa-grid-2"
