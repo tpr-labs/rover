@@ -1,6 +1,7 @@
 import bleach
 import importlib
 import markdown
+import re
 from datetime import date, datetime
 from flask import Blueprint, jsonify, redirect, render_template, request, url_for
 
@@ -144,10 +145,86 @@ def _build_breadcrumb(folder_id: int | None) -> list[dict]:
     return crumbs
 
 
+def _build_file_path(file: dict | None) -> list[dict]:
+    if not file:
+        return [{"folder_id": None, "folder_name": "Root"}]
+    return _build_breadcrumb(file.get("folder_id"))
+
+
+def _highlight_match(text: str | None, query: str) -> str:
+    src = str(text or "")
+    q = (query or "").strip()
+    if not src or not q:
+        return bleach.clean(src)
+    pattern = re.compile(re.escape(q), re.IGNORECASE)
+    safe_src = bleach.clean(src)
+    return pattern.sub(lambda m: f"<mark>{m.group(0)}</mark>", safe_src)
+
+
+def _build_content_snippet(content: str | None, query: str, radius: int = 90) -> str:
+    text = " ".join(str(content or "").split())
+    q = (query or "").strip().lower()
+    if not text:
+        return ""
+    if not q:
+        return text[: radius * 2]
+
+    idx = text.lower().find(q)
+    if idx < 0:
+        return text[: radius * 2]
+
+    start = max(0, idx - radius)
+    end = min(len(text), idx + len(q) + radius)
+    snippet = text[start:end]
+    if start > 0:
+        snippet = f"…{snippet}"
+    if end < len(text):
+        snippet = f"{snippet}…"
+    return snippet
+
+
+def _search_rank(row: dict, query: str) -> tuple[int, str]:
+    q = (query or "").strip().lower()
+    result_type = (row.get("result_type") or "file").lower()
+    title = str(row.get("title") or "").lower()
+    tags = str(row.get("tags") or "").lower()
+    content = str(row.get("content_md") or "").lower()
+
+    if result_type == "folder":
+        if q and q in title:
+            return (0, title)
+        return (3, title)
+
+    if q and q in title:
+        return (0, title)
+    if q and q in tags:
+        return (1, tags)
+    if q and q in content:
+        return (2, content)
+    return (3, title)
+
+
 @sb_bp.get("/sb")
 def sb_home():
     query = (request.args.get("q") or "").strip()
     search_results = search_files(query) if query else []
+    if query:
+        search_results = sorted(search_results, key=lambda row: _search_rank(row, query))
+    for row in search_results:
+        result_type = (row.get("result_type") or "file").lower()
+        title = row.get("title") or ""
+        tags = row.get("tags") or ""
+        snippet = _build_content_snippet(row.get("content_md") or "", query)
+        row["title_highlight"] = _highlight_match(title, query)
+        row["tags_highlight"] = _highlight_match(tags, query)
+        row["snippet_highlight"] = _highlight_match(snippet, query)
+        if result_type == "folder":
+            row["result_url"] = url_for("sb.sb_home", folder_id=row.get("folder_id"))
+            row["result_kind"] = "Folder"
+            row["snippet_highlight"] = ""
+        else:
+            row["result_url"] = url_for("sb.sb_file_view", file_id=row.get("file_id"))
+            row["result_kind"] = "File"
 
     folder_id_raw = request.args.get("folder_id")
     selected_folder = None
@@ -387,7 +464,15 @@ def sb_file_view(file_id: int):
     public_url = None
     if file.get("is_public") == "Y" and file.get("public_token"):
         public_url = url_for("sb.sb_public_file_view", token=file["public_token"], _external=True)
-    return render_template("sb/file_view.html", file=file, html_content=html_content, links=list_file_links(file_id), public_url=public_url)
+    file_path = _build_file_path(file)
+    return render_template(
+        "sb/file_view.html",
+        file=file,
+        file_path=file_path,
+        html_content=html_content,
+        links=list_file_links(file_id),
+        public_url=public_url,
+    )
 
 
 @sb_bp.get("/sb/public/<string:token>")

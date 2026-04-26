@@ -3,7 +3,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4 mb-0">{% if mode == 'create' %}Create Account{% else %}Edit Account{% endif %}</h1>
-  <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_accounts_list') }}">Back</a>
+  <a class="btn btn-secondary" href="{{ url_for('ft.ft_accounts_list') }}">Back</a>
 </div>
 
 {% if error_message %}<div class="alert alert-danger">{{ error_message }}</div>{% endif %}
@@ -26,7 +26,7 @@
       </select>
     </div>
     {% endif %}
-    <button class="btn btn-outline-secondary" type="submit">{% if mode == 'create' %}Create{% else %}Update{% endif %}</button>
+    <button class="btn btn-secondary" type="submit">{% if mode == 'create' %}Create{% else %}Update{% endif %}</button>
   </form>
 </div></div>
 {% endblock %}

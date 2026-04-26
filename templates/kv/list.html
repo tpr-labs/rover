@@ -2,17 +2,17 @@
 {% block title %}Key-Value Store · Rover{% endblock %}
 {% block content %}
 <style>
-  .trim-cell {
-    max-width: 260px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .kv-key-highlight {
+    color: #93c5fd;
+  }
+  .kv-meta-line {
+    row-gap: .25rem;
   }
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4 mb-0">Key-Value Store</h1>
-  <a class="btn btn-outline-secondary" href="{{ url_for('kv.kv_new_page') }}">Create New</a>
+  <a class="btn btn-secondary" href="{{ url_for('kv.kv_new_page') }}">Create New</a>
 </div>
 
 <div class="card shadow-sm mb-3">
@@ -35,7 +35,7 @@
         </select>
       </div>
       <div class="col-md-2 d-grid">
-        <button class="btn btn-outline-secondary" type="submit">Search</button>
+        <button class="btn btn-secondary" type="submit">Search</button>
       </div>
     </form>
   </div>
@@ -48,55 +48,62 @@
         <thead class="table-dark">
           <tr>
             <th>Key</th>
-            <th>Value</th>
-            <th>Category</th>
-            <th>Sub Category</th>
-            <th>Status</th>
-            <th>Updated</th>
             <th class="text-end">Actions</th>
           </tr>
         </thead>
         <tbody>
         {% for item in items %}
           <tr>
-            <td class="fw-semibold">{{ item.item_key }}</td>
             <td>
-              <div class="trim-cell" title="{{ item.item_value }}">{{ item.item_value }}</div>
-            </td>
-            <td>{{ item.category or '-' }}</td>
-            <td>{{ item.sub_category or '-' }}</td>
-            <td>
-              {% if item.is_active == 'Y' %}
-              <span class="badge rv-badge rv-badge-active">Active</span>
-              {% else %}
-              <span class="badge rv-badge rv-badge-neutral">Inactive</span>
-              {% endif %}
-            </td>
-            <td>{{ item.updated_at_human }}</td>
-            <td class="text-end">
-              <div class="d-inline-flex gap-1">
-                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('kv.kv_detail', item_key=item.item_key) }}">View</a>
-                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('kv.kv_edit_page', item_key=item.item_key) }}">Edit</a>
+              <div class="d-flex flex-wrap align-items-center gap-2 fw-semibold kv-key-highlight">
+                <span>{{ item.item_key }}</span>
+              </div>
+              <div class="small text-muted mt-1 d-flex flex-wrap align-items-center gap-2 kv-meta-line">
+                <span>{{ item.category or '-' }}</span>
+                <span>•</span>
                 {% if item.is_active == 'Y' %}
-                <form method="post" action="{{ url_for('kv.kv_delete', item_key=item.item_key) }}" onsubmit="return confirm('Deactivate this item?');">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                  <button class="btn btn-sm btn-outline-secondary" type="submit">Deactivate</button>
-                </form>
+                <span class="badge rv-badge rv-badge-active">Active</span>
                 {% else %}
-                <form method="post" action="{{ url_for('kv.kv_restore', item_key=item.item_key) }}" onsubmit="return confirm('Restore this item?');">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                  <button class="btn btn-sm btn-outline-secondary" type="submit">Restore</button>
-                </form>
+                <span class="badge rv-badge rv-badge-neutral">Inactive</span>
                 {% endif %}
-                <form method="post" action="{{ url_for('kv.kv_delete_permanent', item_key=item.item_key) }}" onsubmit="return confirm('Delete permanently? This cannot be undone.');">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                  <button class="btn btn-sm btn-outline-secondary" type="submit">Delete</button>
-                </form>
+                <span>•</span>
+                <span>{{ item.updated_at_human.split(',')[0] }}</span>
+              </div>
+            </td>
+            <td class="text-end">
+              <div class="dropdown">
+                <button class="btn btn-sm btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  Actions
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li><a class="dropdown-item" href="{{ url_for('kv.kv_detail', item_key=item.item_key) }}">View</a></li>
+                  <li><a class="dropdown-item" href="{{ url_for('kv.kv_edit_page', item_key=item.item_key) }}">Edit</a></li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li>
+                    {% if item.is_active == 'Y' %}
+                    <form method="post" action="{{ url_for('kv.kv_delete', item_key=item.item_key) }}" onsubmit="return confirm('Deactivate this item?');">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                      <button class="dropdown-item" type="submit">Deactivate</button>
+                    </form>
+                    {% else %}
+                    <form method="post" action="{{ url_for('kv.kv_restore', item_key=item.item_key) }}" onsubmit="return confirm('Restore this item?');">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                      <button class="dropdown-item" type="submit">Restore</button>
+                    </form>
+                    {% endif %}
+                  </li>
+                  <li>
+                    <form method="post" action="{{ url_for('kv.kv_delete_permanent', item_key=item.item_key) }}" onsubmit="return confirm('Delete permanently? This cannot be undone.');">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                      <button class="dropdown-item text-danger" type="submit">Delete Permanently</button>
+                    </form>
+                  </li>
+                </ul>
               </div>
             </td>
           </tr>
         {% else %}
-          <tr><td colspan="7" class="text-center text-muted py-4">No records found.</td></tr>
+          <tr><td colspan="2" class="text-center text-muted py-4">No records found.</td></tr>
         {% endfor %}
         </tbody>
       </table>
@@ -108,10 +115,10 @@
   <span class="text-muted">Page {{ page }} of {{ total_pages }}</span>
   <div class="d-flex gap-2">
     {% if page > 1 %}
-    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('kv.kv_list', q=search, category=category, sub_category=sub_category, status=status, page=page-1) }}">Previous</a>
+    <a class="btn btn-sm btn-secondary" href="{{ url_for('kv.kv_list', q=search, category=category, sub_category=sub_category, status=status, page=page-1) }}">Previous</a>
     {% endif %}
     {% if page < total_pages %}
-    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('kv.kv_list', q=search, category=category, sub_category=sub_category, status=status, page=page+1) }}">Next</a>
+    <a class="btn btn-sm btn-secondary" href="{{ url_for('kv.kv_list', q=search, category=category, sub_category=sub_category, status=status, page=page+1) }}">Next</a>
     {% endif %}
   </div>
 </div>

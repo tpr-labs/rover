@@ -77,7 +77,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4 mb-0">{{ 'Create File' if mode == 'create' else 'Edit File' }}</h1>
-  <a class="btn btn-outline-secondary" href="{{ url_for('sb.sb_home', folder_id=selected_folder_id) if selected_folder_id else url_for('sb.sb_home') }}">Back</a>
+  <a class="btn btn-secondary" href="{{ url_for('sb.sb_file_view', file_id=file.file_id) if mode == 'edit' and file else (url_for('sb.sb_home', folder_id=selected_folder_id) if selected_folder_id else url_for('sb.sb_home')) }}">Back</a>
 </div>
 {% if message == 'created' %}<div class="alert alert-success">File created. Continue writing — autosave is active.</div>{% endif %}
 {% if message == 'updated' %}<div class="alert alert-success">File updated successfully.</div>{% endif %}
@@ -121,7 +121,7 @@
       <textarea id="content_md" class="form-control font-monospace" name="content_md" rows="18" required>{{ file.content_md if file else '' }}</textarea>
     </div>
     <div class="card-body border-top">
-      <button class="btn btn-outline-secondary" type="submit">{{ 'Create File' if mode == 'create' else 'Save Changes' }}</button>
+      <button class="btn btn-secondary" type="submit">{{ 'Create File' if mode == 'create' else 'Save Changes' }}</button>
       <span class="text-muted small ms-2">Tip: Use side-by-side preview from toolbar for Obsidian-like flow.</span>
     </div>
   </div>
@@ -140,7 +140,7 @@
           {% endfor %}
         </select>
       </div>
-      <div class="col-3 d-grid"><button class="btn btn-outline-secondary" type="submit">Link</button></div>
+      <div class="col-3 d-grid"><button class="btn btn-secondary" type="submit">Link</button></div>
     </form>
     <ul class="list-group">
       {% for l in links %}
@@ -148,7 +148,7 @@
         <a href="{{ url_for('sb.sb_file_view', file_id=l.file_id) }}" class="text-decoration-none">{{ l.title }}</a>
         <form method="post" action="{{ url_for('sb.sb_file_remove_link', file_id=file.file_id, target_id=l.file_id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-          <button class="btn btn-sm btn-outline-secondary" type="submit">Unlink</button>
+          <button class="btn btn-sm btn-secondary" type="submit">Unlink</button>
         </form>
       </li>
       {% else %}

@@ -4,8 +4,8 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4 mb-0">Shortcut: {{ item.item_value }}</h1>
   <div class="d-flex gap-2">
-    <a class="btn btn-outline-secondary" href="{{ url_for('shortcuts.shortcuts_list') }}">Back</a>
-    <a class="btn btn-outline-secondary" href="{{ url_for('shortcuts.shortcuts_edit_page', item_key=item.item_key) }}">Edit</a>
+    <a class="btn btn-secondary" href="{{ url_for('shortcuts.shortcuts_list') }}">Back</a>
+    <a class="btn btn-secondary" href="{{ url_for('shortcuts.shortcuts_edit_page', item_key=item.item_key) }}">Edit</a>
   </div>
 </div>
 
@@ -45,23 +45,23 @@
 </div>
 
 {% if item.additional_info and item.is_active == 'Y' %}
-<a class="btn btn-outline-secondary" href="{{ item.additional_info }}">Open Shortcut</a>
+<a class="btn btn-secondary" href="{{ item.additional_info }}">Open Shortcut</a>
 {% endif %}
 
 {% if item.is_active == 'Y' %}
 <form method="post" action="{{ url_for('shortcuts.shortcuts_delete', item_key=item.item_key) }}" onsubmit="return confirm('Deactivate this shortcut?');" class="d-inline-block ms-2">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-  <button type="submit" class="btn btn-outline-secondary">Deactivate</button>
+  <button type="submit" class="btn btn-secondary">Deactivate</button>
 </form>
 {% else %}
 <form method="post" action="{{ url_for('shortcuts.shortcuts_restore', item_key=item.item_key) }}" class="d-inline-block ms-2">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-  <button type="submit" class="btn btn-outline-secondary">Restore</button>
+  <button type="submit" class="btn btn-secondary">Restore</button>
 </form>
 {% endif %}
 
 <form method="post" action="{{ url_for('shortcuts.shortcuts_delete_permanent', item_key=item.item_key) }}" onsubmit="return confirm('Delete permanently? This cannot be undone.');" class="d-inline-block ms-2">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-  <button type="submit" class="btn btn-outline-secondary">Delete Permanently</button>
+  <button type="submit" class="btn btn-secondary">Delete Permanently</button>
 </form>
 {% endblock %}

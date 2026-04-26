@@ -3,7 +3,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4 mb-0">Uploads</h1>
-  <a class="btn btn-outline-secondary {% if not upload_ready %}disabled{% endif %}" href="{{ url_for('uploads.uploads_new_page') }}">Upload File</a>
+  <a class="btn btn-secondary {% if not upload_ready %}disabled{% endif %}" href="{{ url_for('uploads.uploads_new_page') }}">Upload File</a>
 </div>
 
 {% if not upload_ready %}
@@ -17,7 +17,7 @@
         <input class="form-control" name="q" placeholder="Search title/file/notes" value="{{ search }}" />
       </div>
       <div class="col-md-3 d-grid">
-        <button class="btn btn-outline-secondary" type="submit">Search</button>
+        <button class="btn btn-secondary" type="submit">Search</button>
       </div>
     </form>
   </div>
@@ -45,11 +45,11 @@
             <td>{{ item.updated_at_human }}</td>
             <td class="text-end">
               <div class="d-inline-flex gap-1">
-                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('uploads.uploads_detail', upload_id=item.upload_id) }}">View</a>
-                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('uploads.uploads_edit_page', upload_id=item.upload_id) }}">Edit</a>
+                <a class="btn btn-sm btn-secondary" href="{{ url_for('uploads.uploads_detail', upload_id=item.upload_id) }}">View</a>
+                <a class="btn btn-sm btn-secondary" href="{{ url_for('uploads.uploads_edit_page', upload_id=item.upload_id) }}">Edit</a>
                 <form method="post" action="{{ url_for('uploads.uploads_delete', upload_id=item.upload_id) }}" onsubmit="return confirm('Delete this upload from DB and OCI object storage?');">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                  <button class="btn btn-sm btn-outline-secondary" type="submit">Delete</button>
+                  <button class="btn btn-sm btn-secondary" type="submit">Delete</button>
                 </form>
               </div>
             </td>
@@ -67,10 +67,10 @@
   <span class="text-muted">Page {{ page }} of {{ total_pages }}</span>
   <div class="d-flex gap-2">
     {% if page > 1 %}
-    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('uploads.uploads_list', q=search, page=page-1) }}">Previous</a>
+    <a class="btn btn-sm btn-secondary" href="{{ url_for('uploads.uploads_list', q=search, page=page-1) }}">Previous</a>
     {% endif %}
     {% if page < total_pages %}
-    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('uploads.uploads_list', q=search, page=page+1) }}">Next</a>
+    <a class="btn btn-sm btn-secondary" href="{{ url_for('uploads.uploads_list', q=search, page=page+1) }}">Next</a>
     {% endif %}
   </div>
 </div>

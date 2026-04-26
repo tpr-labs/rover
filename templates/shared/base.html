@@ -124,14 +124,38 @@
       color: #b5d0ff;
     }
 
-    .btn-outline-secondary {
-      color: #d1d5db;
+    .btn-secondary {
+      color: #f3f4f6;
+      background: #4b5563;
       border-color: #4b5563;
     }
-    .btn-outline-secondary:hover {
+    .btn-secondary:hover {
       color: #fff;
-      background: rgba(255,255,255,0.10);
+      background: #5b6472;
+      border-color: #5b6472;
+    }
+    .btn-check:focus + .btn-secondary,
+    .btn-secondary:focus {
+      color: #fff;
+      background: #5b6472;
       border-color: #6b7280;
+      box-shadow: 0 0 0 .2rem rgba(148, 163, 184, .35);
+    }
+    .btn-check:checked + .btn-secondary,
+    .btn-check:active + .btn-secondary,
+    .btn-secondary:active,
+    .btn-secondary.active,
+    .show > .btn-secondary.dropdown-toggle {
+      color: #fff;
+      background: #3f4753;
+      border-color: #3f4753;
+    }
+    .btn-secondary:disabled,
+    .btn-secondary.disabled {
+      color: #cfd4dc;
+      background: #39414d;
+      border-color: #39414d;
+      opacity: 1;
     }
 
     .rv-badge {
@@ -277,7 +301,7 @@
       {% if is_authenticated %}
       <div class="ms-auto d-flex align-items-center gap-2 mt-3 mt-lg-0 rv-mobile-stack">
         <div class="dropdown">
-          <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
             <i class="fa-solid fa-link me-1"></i>Shortcuts
           </button>
           <ul class="dropdown-menu dropdown-menu-end">
@@ -292,7 +316,7 @@
         </div>
         <form method="post" action="{{ url_for('auth.logout') }}" class="m-0">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-          <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-right-from-bracket me-1"></i>Logout</button>
+          <button type="submit" class="btn btn-secondary btn-sm"><i class="fa-solid fa-right-from-bracket me-1"></i>Logout</button>
         </form>
       </div>
       {% endif %}

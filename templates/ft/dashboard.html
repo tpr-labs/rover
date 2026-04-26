@@ -2,20 +2,32 @@
 {% from "ft/_macros.html" import tx_summary_cell, tx_actions %}
 {% block title %}Finance Tracker · Rover{% endblock %}
 {% block content %}
+<style>
+  .ft-kpi-card .card { height: 100%; }
+  .ft-kpi-card .card-body {
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+</style>
+
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4 mb-0">Finance Tracker</h1>
   <div class="d-flex gap-2">
-    <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_accounts_list') }}">Accounts</a>
-    <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_llm_calls_list') }}">LLM Calls</a>
-    <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_transactions_list') }}">Transactions</a>
+    <a class="btn btn-secondary" href="{{ url_for('ft.ft_accounts_list') }}">Accounts</a>
+    <a class="btn btn-secondary" href="{{ url_for('ft.ft_llm_calls_list') }}">LLM Calls</a>
+    <a class="btn btn-secondary" href="{{ url_for('ft.ft_transactions_list') }}">Transactions</a>
   </div>
 </div>
 
 <div class="row g-3 mb-3">
-  <div class="col-12 col-md-3"><div class="card"><div class="card-body"><div class="text-muted small">Total Income</div><div class="h5 mb-0 text-success">{{ '%.2f'|format(summary.total_income) }}</div></div></div></div>
-  <div class="col-12 col-md-3"><div class="card"><div class="card-body"><div class="text-muted small">Total Expense</div><div class="h5 mb-0 text-danger">{{ '%.2f'|format(summary.total_expense) }}</div></div></div></div>
-  <div class="col-12 col-md-3"><div class="card"><div class="card-body"><div class="text-muted small">Net</div><div class="h5 mb-0">{{ '%.2f'|format(summary.net_amount) }}</div></div></div></div>
-  <div class="col-12 col-md-3"><div class="card"><div class="card-body"><div class="text-muted small">Pending</div><div class="h5 mb-0">{{ summary.pending_count }}</div><div class="small text-muted mt-1">LLM today: {{ summary.llm_calls_today }}</div><div class="small text-muted">LLM total: {{ summary.llm_calls_total }}</div></div></div></div>
+  <div class="col-12 col-md-4 col-xl-2 ft-kpi-card"><div class="card"><div class="card-body"><div class="text-muted small">Today Spend</div><div class="h5 mb-0 text-danger">{{ '%.2f'|format(summary.today_spend) }}</div><div class="small text-muted mt-1">Expenses only</div></div></div></div>
+  <div class="col-12 col-md-4 col-xl-2 ft-kpi-card"><div class="card"><div class="card-body"><div class="text-muted small">This Month Spend</div><div class="h5 mb-0 text-danger">{{ '%.2f'|format(summary.month_spend) }}</div><div class="small text-muted mt-1">Expenses only</div></div></div></div>
+  <div class="col-12 col-md-4 col-xl-2 ft-kpi-card"><div class="card"><div class="card-body"><div class="text-muted small">Total Income</div><div class="h5 mb-0 text-success">{{ '%.2f'|format(summary.total_income) }}</div><div class="small text-muted mt-1">All-time</div></div></div></div>
+  <div class="col-12 col-md-4 col-xl-2 ft-kpi-card"><div class="card"><div class="card-body"><div class="text-muted small">Total Expense</div><div class="h5 mb-0 text-danger">{{ '%.2f'|format(summary.total_expense) }}</div><div class="small text-muted mt-1">All-time</div></div></div></div>
+  <div class="col-12 col-md-4 col-xl-2 ft-kpi-card"><div class="card"><div class="card-body"><div class="text-muted small">Net</div><div class="h5 mb-0">{{ '%.2f'|format(summary.net_amount) }}</div><div class="small text-muted mt-1">Income - Expense</div></div></div></div>
+  <div class="col-12 col-md-4 col-xl-2 ft-kpi-card"><div class="card"><div class="card-body"><div class="text-muted small">Pending</div><div class="h5 mb-0">{{ summary.pending_count }}</div><div class="small text-muted mt-1">LLM T: {{ summary.llm_calls_today }} • A: {{ summary.llm_calls_total }}</div></div></div></div>
 </div>
 
 <div class="card shadow-sm mb-3">
@@ -27,7 +39,7 @@
         <input class="form-control" name="raw_text" id="ftQuickRawText" placeholder="e.g. income 55000 from salary account for april" required />
       </div>
       <div class="col-md-2 d-grid">
-        <button class="btn btn-outline-secondary" type="submit" id="ftQuickAddBtn">Add</button>
+        <button class="btn btn-secondary" type="submit" id="ftQuickAddBtn">Add</button>
       </div>
     </form>
     <div id="ftQuickAddMsg" class="small mt-2 text-muted"></div>
@@ -40,9 +52,9 @@
     <div class="d-flex gap-2">
       <form method="post" action="{{ url_for('ft.ft_transactions_process_pending') }}" class="m-0">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-        <button class="btn btn-sm btn-outline-secondary" type="submit">Process Pending</button>
+        <button class="btn btn-sm btn-secondary" type="submit">Process Pending</button>
       </form>
-      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('ft.ft_transactions_list', status='PENDING') }}">Open Full Queue</a>
+      <a class="btn btn-sm btn-secondary" href="{{ url_for('ft.ft_transactions_list', status='PENDING') }}">Open Full Queue</a>
     </div>
   </div>
   <div class="card-body">
