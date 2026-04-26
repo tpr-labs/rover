@@ -23,7 +23,7 @@
       <div class="col-md-4"><label class="form-label">Account</label><select class="form-select" name="account_id"><option value="">-- none --</option>{% for a in accounts %}<option value="{{ a.account_id }}" {% if item and item.account_id==a.account_id %}selected{% endif %}>{{ a.account_name }} ({{ a.account_type }})</option>{% endfor %}</select></div>
       <div class="col-md-12"><label class="form-label">Description</label><textarea class="form-control" name="description" rows="3">{{ item.description if item else '' }}</textarea></div>
     </div>
-    <button class="btn btn-primary mt-3" type="submit">{% if mode == 'create' %}Create{% else %}Update{% endif %}</button>
+    <button class="btn btn-outline-secondary mt-3" type="submit">{% if mode == 'create' %}Create{% else %}Update{% endif %}</button>
   </form>
 </div></div>
 {% endblock %}

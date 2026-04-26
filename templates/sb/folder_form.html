@@ -17,7 +17,7 @@
       {% for f in all_folders %}<option value="{{ f.folder_id }}" {% if parent_folder_id == f.folder_id %}selected{% endif %}>{{ f.folder_name }}</option>{% endfor %}
       </select>
     </div>
-    <button class="btn btn-primary" type="submit">{{ 'Create' if mode == 'create' else 'Update' }}</button>
+    <button class="btn btn-outline-secondary" type="submit">{{ 'Create' if mode == 'create' else 'Update' }}</button>
   </form>
 </div></div>
 {% endblock %}

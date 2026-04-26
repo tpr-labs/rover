@@ -4,9 +4,9 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4 mb-0">SQL Explorer</h1>
   {% if write_mode_enabled %}
-  <span class="badge text-bg-danger">DEV WRITE MODE</span>
+  <span class="badge rv-badge rv-badge-danger">DEV WRITE MODE</span>
   {% else %}
-  <span class="badge text-bg-warning">Read-only (SELECT only)</span>
+  <span class="badge rv-badge rv-badge-pending">Read-only (SELECT only)</span>
   {% endif %}
 </div>
 
@@ -18,7 +18,7 @@
         <label class="form-label">SQL Query</label>
         <textarea class="form-control font-monospace" name="query" rows="7" required>{{ query_text }}</textarea>
       </div>
-      <button class="btn btn-primary" type="submit">Execute</button>
+      <button class="btn btn-outline-secondary" type="submit">Execute</button>
     </form>
   </div>
 </div>

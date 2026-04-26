@@ -3,7 +3,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4 mb-0">City Directory</h1>
-  <span class="badge text-bg-primary">{{ rows|length }} rows</span>
+  <span class="badge rv-badge rv-badge-primary">{{ rows|length }} rows</span>
 </div>
 
 <div class="card shadow-sm">
@@ -21,7 +21,7 @@
         {% for r in rows %}
           <tr>
             <td class="fw-semibold">{{ r.city_name }}</td>
-            <td><span class="badge text-bg-secondary border">{{ r.city_state }}</span></td>
+            <td><span class="badge rv-badge rv-badge-neutral border">{{ r.city_state }}</span></td>
             <td>{{ r.description }}</td>
           </tr>
         {% else %}

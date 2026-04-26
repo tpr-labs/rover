@@ -4,7 +4,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4 mb-0"><i class="fa-solid fa-diagram-project me-2"></i>Secondary Brain Graph</h1>
   <div class="d-flex gap-2">
-    <a class="btn btn-outline-primary btn-sm" href="{{ url_for('sb.sb_home') }}"><i class="fa-solid fa-folder-tree me-1"></i>File Explorer</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('sb.sb_home') }}"><i class="fa-solid fa-folder-tree me-1"></i>File Explorer</a>
   </div>
 </div>
 
@@ -144,13 +144,13 @@
       return;
     }
     details.innerHTML = `
-      <div class="mb-2"><span class="badge ${node.kind === 'folder' ? 'text-bg-warning' : node.kind === 'root_hub' ? 'text-bg-primary' : 'text-bg-info'}">${node.kind}</span></div>
-      ${node.kind === 'file' ? `<div class="detail-visibility"><span class="badge ${node.is_public === 'Y' ? 'text-bg-success' : 'text-bg-secondary'}">${node.is_public === 'Y' ? 'Public' : 'Private'}</span></div>` : ''}
+      <div class="mb-2"><span class="badge rv-badge ${node.kind === 'folder' ? 'rv-badge-pending' : node.kind === 'root_hub' ? 'rv-badge-primary' : 'rv-badge-info'}">${node.kind}</span></div>
+      ${node.kind === 'file' ? `<div class="detail-visibility"><span class="badge rv-badge ${node.is_public === 'Y' ? 'rv-badge-active' : 'rv-badge-neutral'}">${node.is_public === 'Y' ? 'Public' : 'Private'}</span></div>` : ''}
       <h6 class="detail-name">${node.name}</h6>
       <div class="detail-row">Created: ${node.created_at_human || '-'}</div>
       <div class="detail-row">Updated: ${node.updated_at_human || '-'}</div>
       ${node.tags ? `<div class="detail-tags"><strong>Tags:</strong> ${node.tags}</div>` : ''}
-      ${node.go_to_url ? `<a class="btn btn-sm btn-primary" href="${node.go_to_url}"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Go to</a>` : ''}
+      ${node.go_to_url ? `<a class="btn btn-sm btn-outline-secondary" href="${node.go_to_url}"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Go to</a>` : ''}
     `;
   }
 

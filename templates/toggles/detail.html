@@ -5,7 +5,7 @@
   <h1 class="h4 mb-0">Toggle: {{ item.item_key }}</h1>
   <div class="d-flex gap-2">
     <a class="btn btn-outline-secondary" href="{{ url_for('toggles.toggles_list') }}">Back</a>
-    <a class="btn btn-primary" href="{{ url_for('toggles.toggles_edit_page', item_key=item.item_key) }}">Edit</a>
+    <a class="btn btn-outline-secondary" href="{{ url_for('toggles.toggles_edit_page', item_key=item.item_key) }}">Edit</a>
   </div>
 </div>
 
@@ -29,9 +29,9 @@
       <dt class="col-sm-3">Status</dt>
       <dd class="col-sm-9">
         {% if item.is_active == 'Y' %}
-        <span class="badge text-bg-success">Active</span>
+        <span class="badge rv-badge rv-badge-active">Active</span>
         {% else %}
-        <span class="badge text-bg-secondary">Inactive</span>
+        <span class="badge rv-badge rv-badge-neutral">Inactive</span>
         {% endif %}
       </dd>
       <dt class="col-sm-3">Created At</dt>
@@ -45,17 +45,17 @@
 {% if item.is_active == 'Y' %}
 <form method="post" action="{{ url_for('toggles.toggles_delete', item_key=item.item_key) }}" onsubmit="return confirm('Deactivate this toggle?');" class="d-inline-block">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-  <button type="submit" class="btn btn-outline-warning">Deactivate</button>
+  <button type="submit" class="btn btn-outline-secondary">Deactivate</button>
 </form>
 {% else %}
 <form method="post" action="{{ url_for('toggles.toggles_restore', item_key=item.item_key) }}" class="d-inline-block">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-  <button type="submit" class="btn btn-outline-success">Restore</button>
+  <button type="submit" class="btn btn-outline-secondary">Restore</button>
 </form>
 {% endif %}
 
 <form method="post" action="{{ url_for('toggles.toggles_delete_permanent', item_key=item.item_key) }}" onsubmit="return confirm('Delete permanently? This cannot be undone.');" class="d-inline-block ms-2">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-  <button type="submit" class="btn btn-outline-danger">Delete Permanently</button>
+  <button type="submit" class="btn btn-outline-secondary">Delete Permanently</button>
 </form>
 {% endblock %}

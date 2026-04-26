@@ -360,8 +360,10 @@ def list_transactions(
     direction: str | None,
     start_date: str | None,
     end_date: str | None,
+    account_id: int | None,
     page: int,
     page_size: int,
+    exclude_pending: bool = False,
 ) -> tuple[list[dict], int, str, str]:
     search = (search or "").strip().lower()
     status = (status or "all").strip().upper()
@@ -388,6 +390,15 @@ def list_transactions(
     if direction != "ALL":
         where.append("direction = :direction")
         params["direction"] = direction
+    if account_id is not None:
+        where.append("account_id = :account_id")
+        params["account_id"] = int(account_id)
+
+    if exclude_pending:
+        if status == "PENDING":
+            status = "ALL"
+        where.append("status <> 'PENDING'")
+
     if (start_date or "").strip():
         where.append("tx_date >= :start_date")
         params["start_date"] = _normalize_date(start_date)

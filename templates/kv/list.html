@@ -12,7 +12,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4 mb-0">Key-Value Store</h1>
-  <a class="btn btn-primary" href="{{ url_for('kv.kv_new_page') }}">Create New</a>
+  <a class="btn btn-outline-secondary" href="{{ url_for('kv.kv_new_page') }}">Create New</a>
 </div>
 
 <div class="card shadow-sm mb-3">
@@ -35,7 +35,7 @@
         </select>
       </div>
       <div class="col-md-2 d-grid">
-        <button class="btn btn-outline-primary" type="submit">Search</button>
+        <button class="btn btn-outline-secondary" type="submit">Search</button>
       </div>
     </form>
   </div>
@@ -67,30 +67,30 @@
             <td>{{ item.sub_category or '-' }}</td>
             <td>
               {% if item.is_active == 'Y' %}
-              <span class="badge text-bg-success">Active</span>
+              <span class="badge rv-badge rv-badge-active">Active</span>
               {% else %}
-              <span class="badge text-bg-secondary">Inactive</span>
+              <span class="badge rv-badge rv-badge-neutral">Inactive</span>
               {% endif %}
             </td>
             <td>{{ item.updated_at_human }}</td>
             <td class="text-end">
               <div class="d-inline-flex gap-1">
                 <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('kv.kv_detail', item_key=item.item_key) }}">View</a>
-                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('kv.kv_edit_page', item_key=item.item_key) }}">Edit</a>
+                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('kv.kv_edit_page', item_key=item.item_key) }}">Edit</a>
                 {% if item.is_active == 'Y' %}
                 <form method="post" action="{{ url_for('kv.kv_delete', item_key=item.item_key) }}" onsubmit="return confirm('Deactivate this item?');">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                  <button class="btn btn-sm btn-outline-warning" type="submit">Deactivate</button>
+                  <button class="btn btn-sm btn-outline-secondary" type="submit">Deactivate</button>
                 </form>
                 {% else %}
                 <form method="post" action="{{ url_for('kv.kv_restore', item_key=item.item_key) }}" onsubmit="return confirm('Restore this item?');">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                  <button class="btn btn-sm btn-outline-success" type="submit">Restore</button>
+                  <button class="btn btn-sm btn-outline-secondary" type="submit">Restore</button>
                 </form>
                 {% endif %}
                 <form method="post" action="{{ url_for('kv.kv_delete_permanent', item_key=item.item_key) }}" onsubmit="return confirm('Delete permanently? This cannot be undone.');">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                  <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                  <button class="btn btn-sm btn-outline-secondary" type="submit">Delete</button>
                 </form>
               </div>
             </td>
@@ -108,10 +108,10 @@
   <span class="text-muted">Page {{ page }} of {{ total_pages }}</span>
   <div class="d-flex gap-2">
     {% if page > 1 %}
-    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('kv.kv_list', q=search, category=category, sub_category=sub_category, status=status, page=page-1) }}">Previous</a>
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('kv.kv_list', q=search, category=category, sub_category=sub_category, status=status, page=page-1) }}">Previous</a>
     {% endif %}
     {% if page < total_pages %}
-    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('kv.kv_list', q=search, category=category, sub_category=sub_category, status=status, page=page+1) }}">Next</a>
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('kv.kv_list', q=search, category=category, sub_category=sub_category, status=status, page=page+1) }}">Next</a>
     {% endif %}
   </div>
 </div>

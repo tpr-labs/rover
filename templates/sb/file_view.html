@@ -5,12 +5,12 @@
   <h1 class="h4 mb-0">{{ file.title }}</h1>
   <div class="d-flex gap-2">
     <a class="btn btn-outline-secondary" href="{{ url_for('sb.sb_home', folder_id=file.folder_id) }}">Back</a>
-    <a class="btn btn-primary" href="{{ url_for('sb.sb_file_edit_page', file_id=file.file_id) }}">Edit</a>
+    <a class="btn btn-outline-secondary" href="{{ url_for('sb.sb_file_edit_page', file_id=file.file_id) }}">Edit</a>
     {% if file.is_public != 'Y' %}
     <form method="post" action="{{ url_for('sb.sb_file_set_public', file_id=file.file_id) }}" class="m-0">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
       <input type="hidden" name="make_public" value="1" />
-      <button class="btn btn-outline-primary" type="submit">Make Public</button>
+      <button class="btn btn-outline-secondary" type="submit">Make Public</button>
     </form>
     {% endif %}
   </div>
@@ -29,12 +29,12 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
         <input type="hidden" name="make_public" value="1" />
         <input type="hidden" name="regenerate" value="1" />
-        <button class="btn btn-sm btn-outline-warning" type="submit">Regenerate Link</button>
+        <button class="btn btn-sm btn-outline-secondary" type="submit">Regenerate Link</button>
       </form>
       <form method="post" action="{{ url_for('sb.sb_file_set_public', file_id=file.file_id) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
         <input type="hidden" name="make_public" value="0" />
-        <button class="btn btn-sm btn-outline-danger" type="submit">Make Private</button>
+        <button class="btn btn-sm btn-outline-secondary" type="submit">Make Private</button>
       </form>
     </div>
   </div>

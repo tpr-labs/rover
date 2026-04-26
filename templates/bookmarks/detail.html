@@ -5,7 +5,7 @@
   <h1 class="h4 mb-0">Bookmark</h1>
   <div class="d-flex gap-2">
     <a class="btn btn-outline-secondary" href="{{ url_for('bookmarks.bookmarks_list') }}">Back</a>
-    <a class="btn btn-primary" href="{{ url_for('bookmarks.bookmarks_edit_page', bookmark_id=item.bookmark_id) }}">Edit</a>
+    <a class="btn btn-outline-secondary" href="{{ url_for('bookmarks.bookmarks_edit_page', bookmark_id=item.bookmark_id) }}">Edit</a>
   </div>
 </div>
 
@@ -29,9 +29,9 @@
       <dt class="col-sm-3">Starred</dt>
       <dd class="col-sm-9">
         {% if item.starred == 1 %}
-        <span class="badge text-bg-warning text-dark"><i class="fa-solid fa-star me-1"></i>Yes</span>
+        <span class="badge rv-badge rv-badge-pending text-dark"><i class="fa-solid fa-star me-1"></i>Yes</span>
         {% else %}
-        <span class="badge text-bg-secondary">No</span>
+        <span class="badge rv-badge rv-badge-neutral">No</span>
         {% endif %}
       </dd>
       <dt class="col-sm-3">Notes</dt>
@@ -46,6 +46,6 @@
 
 <form method="post" action="{{ url_for('bookmarks.bookmarks_delete', bookmark_id=item.bookmark_id) }}" onsubmit="return confirm('Delete this bookmark?');">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-  <button type="submit" class="btn btn-outline-danger">Delete</button>
+  <button type="submit" class="btn btn-outline-secondary">Delete</button>
 </form>
 {% endblock %}

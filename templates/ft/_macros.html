@@ -1,0 +1,65 @@
+{% macro tx_summary_cell(item, pending_badge=False) -%}
+<div class="d-flex flex-wrap align-items-center gap-2 fw-semibold">
+  <span class="badge rv-badge rv-badge-dark">#{{ item.transaction_id }}</span>
+  <span class="text-muted">•</span>
+  <span class="{% if item.amount >= 0 %}text-success{% else %}text-danger{% endif %}" style="font-family: 'Courier New', monospace;">{% if item.amount >= 0 %}+{% endif %}{{ '%.2f'|format(item.amount) }}</span>
+  <span class="text-muted">•</span>
+  <span>{{ item.account_name or '-' }}</span>
+  <span class="text-muted">•</span>
+  <span>{{ item.description or '-' }}</span>
+</div>
+<div class="small text-muted mt-1 d-flex flex-wrap align-items-center gap-2">
+  <span>{{ item.tx_date_human }}</span>
+  <span>•</span>
+  <span class="badge rv-badge rv-badge-neutral">{{ item.category or 'uncategorized' }}</span>
+  {% if pending_badge or item.status == 'PENDING' %}
+    <span class="badge rv-badge rv-badge-pending">PENDING</span>
+  {% endif %}
+</div>
+{%- endmacro %}
+
+{% macro tx_actions(item, csrf_token, allow_mark_pending=True, allow_delete=True) -%}
+<div class="btn-group btn-group-sm" role="group" aria-label="Row actions">
+  <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_transaction_detail', transaction_id=item.transaction_id) }}" title="View"><i class="fa-solid fa-eye"></i></a>
+  {% if allow_mark_pending and item.status != 'PENDING' %}
+  <form method="post" action="{{ url_for('ft.ft_transaction_mark_pending', transaction_id=item.transaction_id) }}" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <button class="btn btn-outline-secondary" type="submit" title="Mark to Process"><i class="fa-solid fa-rotate-left"></i></button>
+  </form>
+  {% endif %}
+  {% if allow_delete %}
+  <form method="post" action="{{ url_for('ft.ft_transaction_delete', transaction_id=item.transaction_id) }}" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <button class="btn btn-outline-secondary" type="submit" title="Delete" onclick="return confirm('Delete this transaction?');"><i class="fa-solid fa-trash"></i></button>
+  </form>
+  {% endif %}
+</div>
+{%- endmacro %}
+
+{% macro llm_summary_cell(item) -%}
+<div class="d-flex flex-wrap align-items-center gap-2 fw-semibold">
+  <span>Call #{{ item.call_id }}</span>
+  <span class="text-muted">•</span>
+  <span>Tx: {{ item.transaction_id or '-' }}</span>
+  <span class="text-muted">•</span>
+  <span class="badge rv-badge rv-badge-neutral">{{ item.model_name or '-' }}</span>
+</div>
+<div class="small text-muted mt-1 d-flex flex-wrap align-items-center gap-2">
+  <span>{{ '%.2f'|format((item.latency_ms or 0) / 1000) }} s</span>
+  <span>•</span>
+  <span>Tokens: {{ item.total_tokens }} (p:{{ item.prompt_tokens }}, c:{{ item.completion_tokens }})</span>
+  <span>•</span>
+  {% if item.cache_hit == 'Y' %}
+    <span class="badge rv-badge rv-badge-info">Hit</span>
+  {% else %}
+    <span class="badge rv-badge rv-badge-neutral">Miss</span>
+  {% endif %}
+</div>
+<div class="small text-muted mt-1">{{ item.created_at_human }}</div>
+{%- endmacro %}
+
+{% macro llm_actions(item) -%}
+<div class="btn-group btn-group-sm" role="group" aria-label="Row actions">
+  <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_llm_call_detail', call_id=item.call_id) }}" title="View"><i class="fa-solid fa-eye"></i></a>
+</div>
+{%- endmacro %}
