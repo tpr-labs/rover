@@ -41,7 +41,7 @@
         <textarea class="form-control" name="notes" rows="5" maxlength="4000">{{ item.notes if item else '' }}</textarea>
       </div>
 
-      <button class="btn btn-primary" type="submit" {% if mode == 'create' and not upload_ready %}disabled{% endif %}>
+      <button class="btn btn-outline-secondary" type="submit" {% if mode == 'create' and not upload_ready %}disabled{% endif %}>
         {% if mode == 'create' %}Upload{% else %}Update{% endif %}
       </button>
     </form>

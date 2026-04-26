@@ -1,4 +1,5 @@
 {% extends "shared/base.html" %}
+{% from "ft/_macros.html" import tx_summary_cell, tx_actions %}
 {% block title %}Finance Transactions · Rover{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -6,7 +7,7 @@
   <div class="d-flex gap-2">
     <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_dashboard') }}">Dashboard</a>
     <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_llm_calls_list') }}">LLM Calls</a>
-    <a class="btn btn-primary" href="{{ url_for('ft.ft_transactions_new_page') }}">Create</a>
+    <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_transactions_new_page') }}">Create</a>
   </div>
 </div>
 
@@ -17,13 +18,19 @@
   <form method="post" action="{{ url_for('ft.ft_transactions_create_raw') }}" class="row g-2">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
     <div class="col-md-10"><input class="form-control" name="raw_text" placeholder="Raw text e.g. income 5000 from act1 salary for June" required /></div>
-    <div class="col-md-2 d-grid"><button class="btn btn-primary" type="submit">Add Raw</button></div>
+    <div class="col-md-2 d-grid"><button class="btn btn-outline-secondary" type="submit">Add Raw</button></div>
   </form>
 </div></div>
 
 <div class="card shadow-sm mb-3"><div class="card-body">
   <form method="get" class="row g-2">
     <div class="col-md-3"><input class="form-control" name="q" value="{{ search }}" placeholder="Search" /></div>
+    <div class="col-md-2"><select class="form-select" name="account_id">
+      <option value="">All accounts</option>
+      {% for a in accounts_filter %}
+      <option value="{{ a.account_id }}" {% if selected_account_id == (a.account_id|string) %}selected{% endif %}>{{ a.account_name }}</option>
+      {% endfor %}
+    </select></div>
     <div class="col-md-2"><input class="form-control" type="date" name="start_date" value="{{ start_date }}" /></div>
     <div class="col-md-2"><input class="form-control" type="date" name="end_date" value="{{ end_date }}" /></div>
     <div class="col-md-2"><select class="form-select" name="status">
@@ -38,51 +45,34 @@
       <option value="INCOME" {% if direction=='INCOME' %}selected{% endif %}>Income</option>
       <option value="EXPENSE" {% if direction=='EXPENSE' %}selected{% endif %}>Expense</option>
     </select></div>
-    <div class="col-md-1 d-grid"><button class="btn btn-outline-primary" type="submit">Go</button></div>
+    <div class="col-md-1 d-grid"><button class="btn btn-outline-secondary" type="submit">Go</button></div>
   </form>
 </div></div>
 
 <div class="card shadow-sm mb-3">
   <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
-    <span>Unprocessed Transactions (Pending LLM)</span>
+    <span>Unprocessed Transactions</span>
     <form method="post" action="{{ url_for('ft.ft_transactions_process_pending') }}" class="m-0">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-      <button class="btn btn-sm btn-outline-primary" type="submit">Process Pending (LLM)</button>
+      <button class="btn btn-sm btn-outline-secondary" type="submit">Process Pending (LLM)</button>
     </form>
   </div>
-  <div class="card-body p-0">
+  <div class="card-body">
     <div class="table-responsive">
-      <table class="table table-striped mb-0">
+      <table class="table table-striped mb-0 align-middle">
         <thead class="table-dark">
-          <tr>
-            <th>Date</th>
-            <th>Amt</th>
-            <th>Act</th>
-            <th>Category</th>
-            <th>Description</th>
-            <th>Status</th>
-            <th class="text-end">Actions</th>
-          </tr>
+          <tr><th>Transaction</th><th class="text-end" style="width: 1%; white-space: nowrap;">Actions</th></tr>
         </thead>
         <tbody>
         {% for item in unprocessed_items %}
           <tr>
-            <td>{{ item.tx_date_human }}</td>
-            <td>
-              <span class="{% if item.amount >= 0 %}text-success{% else %}text-danger{% endif %} fw-bold" style="font-family: 'Courier New', monospace;">{% if item.amount >= 0 %}+{% endif %}{{ '%.2f'|format(item.amount) }}</span>
-            </td>
-            <td>{{ item.account_name or '-' }}</td>
-            <td><span class="badge text-bg-secondary">{{ item.category or 'uncategorized' }}</span></td>
-            <td>{{ item.description or '-' }}</td>
-            <td><span class="badge text-bg-warning">PENDING</span></td>
+            <td>{{ tx_summary_cell(item, pending_badge=True) }}</td>
             <td class="text-end">
-              <div class="btn-group btn-group-sm" role="group" aria-label="Row actions">
-                <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_transaction_detail', transaction_id=item.transaction_id) }}" title="View"><i class="fa-solid fa-eye"></i></a>
-              </div>
+              {{ tx_actions(item, csrf_token, allow_mark_pending=False, allow_delete=True) }}
             </td>
           </tr>
         {% else %}
-          <tr><td colspan="7" class="text-center text-muted py-4">No unprocessed transactions.</td></tr>
+          <tr><td colspan="2" class="text-center text-muted py-3">No unprocessed transactions.</td></tr>
         {% endfor %}
         </tbody>
       </table>
@@ -90,54 +80,31 @@
   </div>
 </div>
 
-<div class="card shadow-sm"><div class="card-body p-0"><div class="table-responsive">
-<table class="table table-striped mb-0">
-  <thead class="table-dark"><tr><th>Date</th><th>Amt</th><th>Act</th><th>Category</th><th>Description</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
-  <tbody>
-  {% for item in items %}
-    <tr>
-      <td>{{ item.tx_date_human }}</td>
-      <td>
-        <span class="{% if item.amount >= 0 %}text-success{% else %}text-danger{% endif %} fw-bold" style="font-family: 'Courier New', monospace;">{% if item.amount >= 0 %}+{% endif %}{{ '%.2f'|format(item.amount) }}</span>
-      </td>
-      <td>{{ item.account_name or '-' }}</td>
-      <td><span class="badge text-bg-secondary">{{ item.category or 'uncategorized' }}</span></td>
-      <td>{{ item.description or '-' }}</td>
-      <td>
-        {% if item.status == 'PENDING' %}
-          <span class="badge text-bg-warning">PENDING</span>
-        {% elif item.status == 'PROCESSED' %}
-          <span class="badge text-bg-success">PROCESSED</span>
-        {% elif item.status == 'FAILED' %}
-          <span class="badge text-bg-danger">FAILED</span>
-        {% else %}
-          <span class="badge text-bg-secondary">{{ item.status }}</span>
-        {% endif %}
-      </td>
-      <td class="text-end">
-        <div class="btn-group btn-group-sm" role="group" aria-label="Row actions">
-          <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_transaction_detail', transaction_id=item.transaction_id) }}" title="View"><i class="fa-solid fa-eye"></i></a>
-          {% if item.status != 'PENDING' %}
-          <form method="post" action="{{ url_for('ft.ft_transaction_mark_pending', transaction_id=item.transaction_id) }}" class="d-inline">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-            <button class="btn btn-outline-warning" type="submit" title="Mark to Process"><i class="fa-solid fa-rotate-left"></i></button>
-          </form>
-          {% endif %}
-        </div>
-      </td>
-    </tr>
-  {% else %}
-    <tr><td colspan="7" class="text-center text-muted py-4">No transactions found.</td></tr>
-  {% endfor %}
-  </tbody>
-</table>
+<div class="card shadow-sm"><div class="card-body">
+<div class="table-responsive">
+  <table class="table table-striped mb-0 align-middle">
+    <thead class="table-dark">
+      <tr><th>Transaction</th><th class="text-end" style="width: 1%; white-space: nowrap;">Actions</th></tr>
+    </thead>
+    <tbody>
+    {% for item in items %}
+      <tr>
+        <td>{{ tx_summary_cell(item, pending_badge=False) }}</td>
+        <td class="text-end">{{ tx_actions(item, csrf_token, allow_mark_pending=True, allow_delete=True) }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="2" class="text-center text-muted py-3">No transactions found.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
 </div></div></div>
 
 <div class="d-flex justify-content-between align-items-center mt-3">
   <span class="text-muted">Page {{ page }} of {{ total_pages }}</span>
   <div class="d-flex gap-2">
-    {% if page > 1 %}<a class="btn btn-sm btn-outline-primary" href="{{ url_for('ft.ft_transactions_list', q=search, status=status, direction=direction, start_date=start_date, end_date=end_date, page=page-1) }}">Previous</a>{% endif %}
-    {% if page < total_pages %}<a class="btn btn-sm btn-outline-primary" href="{{ url_for('ft.ft_transactions_list', q=search, status=status, direction=direction, start_date=start_date, end_date=end_date, page=page+1) }}">Next</a>{% endif %}
+    {% if page > 1 %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for('ft.ft_transactions_list', q=search, status=status, direction=direction, account_id=selected_account_id, start_date=start_date, end_date=end_date, page=page-1) }}">Previous</a>{% endif %}
+    {% if page < total_pages %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for('ft.ft_transactions_list', q=search, status=status, direction=direction, account_id=selected_account_id, start_date=start_date, end_date=end_date, page=page+1) }}">Next</a>{% endif %}
   </div>
 </div>
 {% endblock %}

@@ -360,8 +360,10 @@ def list_transactions(
     direction: str | None,
     start_date: str | None,
     end_date: str | None,
+    account_id: int | None,
     page: int,
     page_size: int,
+    exclude_pending: bool = False,
 ) -> tuple[list[dict], int, str, str]:
     search = (search or "").strip().lower()
     status = (status or "all").strip().upper()
@@ -388,6 +390,15 @@ def list_transactions(
     if direction != "ALL":
         where.append("direction = :direction")
         params["direction"] = direction
+    if account_id is not None:
+        where.append("account_id = :account_id")
+        params["account_id"] = int(account_id)
+
+    if exclude_pending:
+        if status == "PENDING":
+            status = "ALL"
+        where.append("status <> 'PENDING'")
+
     if (start_date or "").strip():
         where.append("tx_date >= :start_date")
         params["start_date"] = _normalize_date(start_date)
@@ -691,6 +702,12 @@ def get_finance_summary() -> dict:
         ORDER BY t.tx_date DESC, t.updated_at DESC, t.transaction_id DESC
         FETCH FIRST 10 ROWS ONLY
     """
+    llm_counts_sql = """
+        SELECT
+            COUNT(*) AS total_calls,
+            SUM(CASE WHEN TRUNC(created_at) = TRUNC(SYSTIMESTAMP) THEN 1 ELSE 0 END) AS today_calls
+        FROM ft_llm_calls
+    """
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql)
@@ -709,11 +726,15 @@ def get_finance_summary() -> dict:
                 }
                 for r in cur.fetchall()
             ]
+            cur.execute(llm_counts_sql)
+            llm_row = cur.fetchone() or (0, 0)
     return {
         "total_income": float(row[0] or 0),
         "total_expense": float(row[1] or 0),
         "net_amount": float(row[2] or 0),
         "pending_count": int(row[3] or 0),
+        "llm_calls_total": int(llm_row[0] or 0),
+        "llm_calls_today": int(llm_row[1] or 0),
         "recent": recent,
     }
 

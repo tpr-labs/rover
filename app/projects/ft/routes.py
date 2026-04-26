@@ -97,9 +97,21 @@ def _parse_raw(raw_text: str) -> dict:
 @ft_bp.get("/ft")
 def ft_dashboard():
     summary = get_finance_summary()
+    pending_items, _, _, _ = list_transactions(
+        search="",
+        status="PENDING",
+        direction="ALL",
+        start_date="",
+        end_date="",
+        account_id=None,
+        page=1,
+        page_size=10,
+    )
+    for i in pending_items:
+        i["tx_date_human"] = _humanize_date_only(i.get("tx_date"))
     for i in summary.get("recent", []):
         i["tx_date_human"] = _humanize_date_only(i.get("tx_date"))
-    return render_template("ft/dashboard.html", summary=summary)
+    return render_template("ft/dashboard.html", summary=summary, pending_items=pending_items)
 
 
 @ft_bp.post("/ft/transactions/raw-ajax")
@@ -121,11 +133,33 @@ def ft_transactions_list():
     search = request.args.get("q", "")
     status = request.args.get("status", "all")
     direction = request.args.get("direction", "all")
+    account_id_raw = (request.args.get("account_id") or "").strip()
+    account_id = int(account_id_raw) if account_id_raw.isdigit() else None
     start_date = (request.args.get("start_date") or "").strip()
     end_date = (request.args.get("end_date") or "").strip()
     page = max(1, int(request.args.get("page", "1")))
-    items, total_pages, status, direction = list_transactions(search, status, direction, start_date, end_date, page, 20)
-    unprocessed_items, _, _, _ = list_transactions(search, "PENDING", direction, start_date, end_date, 1, 50)
+    items, total_pages, status, direction = list_transactions(
+        search,
+        status,
+        direction,
+        start_date,
+        end_date,
+        account_id,
+        page,
+        20,
+        exclude_pending=True,
+    )
+    unprocessed_items, _, _, _ = list_transactions(
+        search,
+        "PENDING",
+        direction,
+        start_date,
+        end_date,
+        account_id,
+        1,
+        50,
+    )
+    accounts_filter = list_accounts(active_only=True)
     for i in items:
         i["updated_at_human"] = _humanize_timestamp(i.get("updated_at"))
         i["tx_date_human"] = _humanize_date_only(i.get("tx_date"))
@@ -139,6 +173,8 @@ def ft_transactions_list():
         search=search,
         status=status,
         direction=direction,
+        accounts_filter=accounts_filter,
+        selected_account_id=account_id_raw,
         start_date=start_date,
         end_date=end_date,
         page=page,

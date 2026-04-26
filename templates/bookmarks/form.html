@@ -45,7 +45,7 @@
         <textarea class="form-control" name="notes" rows="6" maxlength="4000">{{ item.notes if item else '' }}</textarea>
       </div>
 
-      <button class="btn btn-primary" type="submit">{% if mode == 'create' %}Create Bookmark{% else %}Update Bookmark{% endif %}</button>
+      <button class="btn btn-outline-secondary" type="submit">{% if mode == 'create' %}Create Bookmark{% else %}Update Bookmark{% endif %}</button>
     </form>
   </div>
 </div>

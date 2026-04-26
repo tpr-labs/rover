@@ -5,7 +5,7 @@
   <h1 class="h4 mb-0">Finance Accounts</h1>
   <div class="d-flex gap-2">
     <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_dashboard') }}">Dashboard</a>
-    <a class="btn btn-primary" href="{{ url_for('ft.ft_account_new_page') }}">Create Account</a>
+    <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_account_new_page') }}">Create Account</a>
   </div>
 </div>
 
@@ -17,15 +17,15 @@
   {% for item in items %}
     <tr>
       <td class="fw-semibold">{{ item.account_name }}</td>
-      <td><span class="badge text-bg-secondary">{{ item.account_type }}</span></td>
-      <td>{% if item.is_active == 'Y' %}<span class="badge text-bg-success">Active</span>{% else %}<span class="badge text-bg-secondary">Inactive</span>{% endif %}</td>
+      <td><span class="badge rv-badge rv-badge-neutral">{{ item.account_type }}</span></td>
+      <td>{% if item.is_active == 'Y' %}<span class="badge rv-badge rv-badge-active">Active</span>{% else %}<span class="badge rv-badge rv-badge-neutral">Inactive</span>{% endif %}</td>
       <td>{{ item.updated_at_human }}</td>
       <td class="text-end">
         <div class="btn-group btn-group-sm" role="group" aria-label="Row actions">
-          <a class="btn btn-outline-primary" href="{{ url_for('ft.ft_account_edit_page', account_id=item.account_id) }}" title="Edit"><i class="fa-solid fa-pen"></i></a>
+          <a class="btn btn-outline-secondary" href="{{ url_for('ft.ft_account_edit_page', account_id=item.account_id) }}" title="Edit"><i class="fa-solid fa-pen"></i></a>
           <form method="post" action="{{ url_for('ft.ft_account_delete', account_id=item.account_id) }}" onsubmit="return confirm('Delete this account?');">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-            <button class="btn btn-outline-danger" type="submit" title="Delete"><i class="fa-solid fa-trash"></i></button>
+            <button class="btn btn-outline-secondary" type="submit" title="Delete"><i class="fa-solid fa-trash"></i></button>
           </form>
         </div>
       </td>
