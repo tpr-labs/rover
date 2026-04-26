@@ -19,7 +19,7 @@
   {% for p in projects %}
   <div class="col-12 col-md-6 col-lg-4">
     <a href="{{ p.path }}" class="text-decoration-none">
-      <div class="card h-100 shadow-sm">
+      <div class="card h-100 shadow-sm" style="background:#0f172a; border-color:#1e293b !important;">
         <div class="card-body d-flex flex-column">
           <div class="project-card-icon"><i class="{{ p.icon_class or 'fa-solid fa-grid-2' }}"></i></div>
           <h3 class="h6 mb-1 text-light">{{ p.title }}</h3>

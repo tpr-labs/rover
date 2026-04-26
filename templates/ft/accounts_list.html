@@ -1,17 +1,26 @@
 {% extends "shared/base.html" %}
 {% block title %}Finance Accounts · Rover{% endblock %}
 {% block content %}
+<style>
+  .ft-panel {
+    background: #0f172a;
+    border: 1px solid #1e293b !important;
+    border-radius: .85rem !important;
+    box-shadow: 0 .35rem 1rem rgba(2, 6, 23, .25);
+  }
+</style>
+
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h4 mb-0">Finance Accounts</h1>
+  <h1 class="h4 mb-0 text-white">Finance Accounts</h1>
   <div class="d-flex gap-2">
-    <a class="btn btn-secondary" href="{{ url_for('ft.ft_dashboard') }}">Dashboard</a>
-    <a class="btn btn-secondary" href="{{ url_for('ft.ft_account_new_page') }}">Create Account</a>
+    <a class="btn btn-secondary" href="{{ url_for('ft.ft_dashboard') }}"><i class="fa-solid fa-chart-pie me-1"></i>Dashboard</a>
+    <a class="btn btn-primary" href="{{ url_for('ft.ft_account_new_page') }}"><i class="fa-solid fa-plus me-1"></i>Create Account</a>
   </div>
 </div>
 
 {% if message %}<div class="alert alert-success">{{ message }}</div>{% endif %}
 
-<div class="card shadow-sm"><div class="card-body p-0"><div class="table-responsive"><table class="table table-striped mb-0">
+<div class="ft-panel"><div class="card-body p-0"><div class="table-responsive"><table class="table table-striped mb-0">
   <thead class="table-dark"><tr><th>Name</th><th>Type</th><th>Status</th><th>Updated</th><th class="text-end">Actions</th></tr></thead>
   <tbody>
   {% for item in items %}

@@ -2,27 +2,52 @@
 {% from "ft/_macros.html" import tx_summary_cell, tx_actions %}
 {% block title %}Finance Transactions · Rover{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h4 mb-0">Finance Transactions</h1>
-  <div class="d-flex gap-2">
-    <a class="btn btn-secondary" href="{{ url_for('ft.ft_dashboard') }}">Dashboard</a>
-    <a class="btn btn-secondary" href="{{ url_for('ft.ft_llm_calls_list') }}">LLM Calls</a>
-    <a class="btn btn-secondary" href="{{ url_for('ft.ft_transactions_new_page') }}">Create</a>
+<style>
+  .ft-panel {
+    background: #0f172a;
+    border: 1px solid #1e293b !important;
+    border-radius: .85rem !important;
+    box-shadow: 0 .35rem 1rem rgba(2, 6, 23, .25);
+  }
+  .ft-table thead th {
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    font-size: .72rem;
+    border-color: #1e293b;
+    background: rgba(30, 41, 59, .35);
+  }
+</style>
+
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center mb-3 gap-2">
+  <h1 class="h4 mb-0 text-white">Finance Transactions</h1>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-secondary" href="{{ url_for('ft.ft_dashboard') }}"><i class="fa-solid fa-chart-pie me-1"></i>Dashboard</a>
+    <a class="btn btn-secondary" href="{{ url_for('ft.ft_llm_calls_list') }}"><i class="fa-solid fa-microchip me-1"></i>LLM Calls</a>
+    <a class="btn btn-primary" href="{{ url_for('ft.ft_transactions_new_page') }}"><i class="fa-solid fa-plus me-1"></i>Create</a>
   </div>
 </div>
 
 {% if message %}<div class="alert alert-success">{{ message }}</div>{% endif %}
 {% if error_message %}<div class="alert alert-danger">{{ error_message }}</div>{% endif %}
 
-<div class="card shadow-sm mb-3"><div class="card-body">
+<div class="ft-panel p-3 mb-3">
   <form method="post" action="{{ url_for('ft.ft_transactions_create_raw') }}" class="row g-2">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
     <div class="col-md-10"><input class="form-control" name="raw_text" placeholder="Raw text e.g. income 5000 from act1 salary for June" required /></div>
-    <div class="col-md-2 d-grid"><button class="btn btn-secondary" type="submit">Add Raw</button></div>
+    <div class="col-md-2 d-grid"><button class="btn btn-primary" type="submit">Add Raw</button></div>
   </form>
-</div></div>
+</div>
 
-<div class="card shadow-sm mb-3"><div class="card-body">
+<div class="ft-panel p-3 mb-3">
+  {% set has_active_filters = (
+    (search and search|trim)
+    or (selected_account_id and selected_account_id|trim)
+    or (start_date and start_date|trim)
+    or (end_date and end_date|trim)
+    or status != 'ALL'
+    or direction != 'ALL'
+  ) %}
   <form method="get" class="row g-2">
     <div class="col-md-3"><input class="form-control" name="q" value="{{ search }}" placeholder="Search" /></div>
     <div class="col-md-2"><select class="form-select" name="account_id">
@@ -45,11 +70,16 @@
       <option value="INCOME" {% if direction=='INCOME' %}selected{% endif %}>Income</option>
       <option value="EXPENSE" {% if direction=='EXPENSE' %}selected{% endif %}>Expense</option>
     </select></div>
-    <div class="col-md-1 d-grid"><button class="btn btn-secondary" type="submit">Go</button></div>
+    <div class="col-md-1 d-grid"><button class="btn btn-primary" type="submit">Go</button></div>
+    {% if has_active_filters %}
+    <div class="col-md-2 d-grid">
+      <a class="btn btn-secondary" href="{{ url_for('ft.ft_transactions_list') }}">Clear filters</a>
+    </div>
+    {% endif %}
   </form>
-</div></div>
+</div>
 
-<div class="card shadow-sm mb-3">
+<div class="ft-panel mb-3">
   <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
     <span>Unprocessed Transactions</span>
     <form method="post" action="{{ url_for('ft.ft_transactions_process_pending') }}" class="m-0">
@@ -59,8 +89,8 @@
   </div>
   <div class="card-body">
     <div class="table-responsive">
-      <table class="table table-striped mb-0 align-middle">
-        <thead class="table-dark">
+      <table class="table table-striped mb-0 align-middle ft-table">
+        <thead>
           <tr><th>Transaction</th><th class="text-end" style="width: 1%; white-space: nowrap;">Actions</th></tr>
         </thead>
         <tbody>
@@ -80,10 +110,10 @@
   </div>
 </div>
 
-<div class="card shadow-sm"><div class="card-body">
+<div class="ft-panel"><div class="card-body">
 <div class="table-responsive">
-  <table class="table table-striped mb-0 align-middle">
-    <thead class="table-dark">
+  <table class="table table-striped mb-0 align-middle ft-table">
+    <thead>
       <tr><th>Transaction</th><th class="text-end" style="width: 1%; white-space: nowrap;">Actions</th></tr>
     </thead>
     <tbody>

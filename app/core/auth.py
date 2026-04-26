@@ -2,7 +2,16 @@ import hmac
 import os
 import secrets
 
-from flask import Flask, redirect, request, session, url_for
+from flask import Flask, current_app, redirect, request, session, url_for
+
+
+def _default_nav_shortcuts() -> list[dict]:
+    return [
+        {"key": "dashboard", "title": "Dashboard", "path": "/dashboard", "icon_class": "fa-solid fa-house"},
+        {"key": "sb", "title": "Secondary Brain", "path": "/sb", "icon_class": "fa-solid fa-brain"},
+        {"key": "kv", "title": "Key Value", "path": "/kv", "icon_class": "fa-solid fa-database"},
+        {"key": "shortcuts", "title": "Shortcuts", "path": "/shortcuts", "icon_class": "fa-solid fa-link"},
+    ]
 
 
 def get_login_token() -> str:
@@ -41,18 +50,43 @@ def configure_auth(app: Flask) -> None:
     def inject_auth_context():
         authenticated = is_authenticated()
         nav_shortcuts = []
-        if authenticated:
-            try:
-                from app.projects.shortcuts.repository import list_nav_shortcuts
+        nav_apps = []
+        try:
+            from app.projects.kv.repository import list_dashboard_projects
 
-                nav_shortcuts = list_nav_shortcuts()
-            except Exception:
-                nav_shortcuts = []
+            nav_apps = list_dashboard_projects()
+        except Exception as exc:
+            current_app.logger.warning("Failed to load dashboard projects for navbar: %s", exc)
+            nav_apps = []
+
+        try:
+            from app.projects.shortcuts.repository import list_nav_shortcuts
+
+            nav_shortcuts = list_nav_shortcuts()
+        except Exception as exc:
+            current_app.logger.warning("Failed to load shortcuts for navbar: %s", exc)
+            nav_shortcuts = []
+
+        if not nav_shortcuts:
+            nav_shortcuts = [
+                {
+                    "key": p.get("key"),
+                    "title": p.get("title"),
+                    "path": p.get("path"),
+                    "icon_class": p.get("icon_class"),
+                }
+                for p in nav_apps
+                if p.get("path")
+            ]
+
+        if not nav_shortcuts:
+            nav_shortcuts = _default_nav_shortcuts()
 
         return {
             "csrf_token": get_or_create_csrf_token(),
             "is_authenticated": authenticated,
             "nav_shortcuts": nav_shortcuts,
+            "nav_apps": nav_apps,
         }
 
 

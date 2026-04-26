@@ -1,17 +1,26 @@
 {% extends "shared/base.html" %}
 {% block title %}Transaction #{{ item.transaction_id }} · Rover{% endblock %}
 {% block content %}
+<style>
+  .ft-panel {
+    background: #0f172a;
+    border: 1px solid #1e293b !important;
+    border-radius: .85rem !important;
+    box-shadow: 0 .35rem 1rem rgba(2, 6, 23, .25);
+  }
+</style>
+
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h4 mb-0">Transaction #{{ item.transaction_id }}</h1>
+  <h1 class="h4 mb-0 text-white">Transaction #{{ item.transaction_id }}</h1>
   <div class="d-flex gap-2">
-    <a class="btn btn-secondary" href="{{ url_for('ft.ft_transactions_list') }}">Back</a>
-    <a class="btn btn-secondary" href="{{ url_for('ft.ft_transaction_edit_page', transaction_id=item.transaction_id) }}">Edit</a>
+    <a class="btn btn-secondary" href="{{ url_for('ft.ft_transactions_list') }}"><i class="fa-solid fa-arrow-left me-1"></i>Back</a>
+    <a class="btn btn-secondary" href="{{ url_for('ft.ft_transaction_edit_page', transaction_id=item.transaction_id) }}"><i class="fa-regular fa-pen-to-square me-1"></i>Edit</a>
   </div>
 </div>
 
 {% if message == 'created' %}<div class="alert alert-success">Transaction created.</div>{% elif message == 'updated' %}<div class="alert alert-success">Transaction updated.</div>{% endif %}
 
-<div class="card shadow-sm mb-3"><div class="card-body"><dl class="row mb-0">
+<div class="ft-panel p-3 mb-3"><div class="card-body p-0"><dl class="row mb-0">
   <dt class="col-sm-3">Raw Text</dt><dd class="col-sm-9" style="white-space: pre-wrap;">{{ item.raw_text or '-' }}</dd>
   <dt class="col-sm-3">Amount</dt><dd class="col-sm-9">{{ '%.2f'|format(item.amount) }}</dd>
   <dt class="col-sm-3">Direction</dt><dd class="col-sm-9">{{ item.direction }}</dd>
@@ -27,6 +36,6 @@
 
 <form method="post" action="{{ url_for('ft.ft_transaction_delete', transaction_id=item.transaction_id) }}" onsubmit="return confirm('Delete this transaction?');">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-  <button class="btn btn-secondary" type="submit">Delete</button>
+  <button class="btn btn-secondary" type="submit"><i class="fa-solid fa-trash me-1"></i>Delete</button>
 </form>
 {% endblock %}
