@@ -1,0 +1,102 @@
+{% extends "shared/base.html" %}
+{% from "ft/_macros.html" import llm_summary_cell %}
+{% block title %}LLM Space · Rover{% endblock %}
+{% block content %}
+<style>
+  .llm-panel,
+  .llm-kpi {
+    background: #0f172a;
+    border: 1px solid #1e293b !important;
+    border-radius: .85rem !important;
+    box-shadow: 0 .35rem 1rem rgba(2, 6, 23, .25);
+  }
+  .llm-kpi {
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 1rem;
+  }
+  .llm-table thead th {
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    font-size: .72rem;
+    border-color: #1e293b;
+    background: rgba(30, 41, 59, .35);
+  }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0 text-white">LLM Space</h1>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 col-md-6">
+    <div class="llm-kpi">
+      <div class="small text-muted">Overall LLM Calls Made</div>
+      <div class="h3 text-white mb-0">{{ summary.total_calls }}</div>
+    </div>
+  </div>
+  <div class="col-12 col-md-6">
+    <div class="llm-kpi">
+      <div class="small text-muted">Today LLM Calls Made</div>
+      <div class="h3 text-white mb-0">{{ summary.today_calls }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="llm-panel p-3 mb-3">
+  <form method="get" class="row g-2">
+    <div class="col-md-4">
+      <input class="form-control" name="transaction_id" placeholder="Filter by transaction ID" value="{{ transaction_id }}" />
+    </div>
+    <div class="col-md-2 d-grid">
+      <button class="btn btn-primary" type="submit">Filter</button>
+    </div>
+  </form>
+</div>
+
+<div class="llm-panel">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0 align-middle llm-table">
+        <thead>
+          <tr><th>LLM Call</th><th>Status</th><th class="text-end" style="width: 1%; white-space: nowrap;">Actions</th></tr>
+        </thead>
+        <tbody>
+        {% for item in items %}
+          <tr>
+            <td>{{ llm_summary_cell(item) }}</td>
+            <td>
+              {% if item.error_message %}
+                <span class="badge rv-badge rv-badge-danger">FAILED</span>
+              {% else %}
+                <span class="badge rv-badge rv-badge-active">OK</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              <a class="btn btn-sm btn-secondary" href="{{ url_for('llm_space.llm_call_detail', call_id=item.call_id) }}" title="View"><i class="fa-solid fa-eye"></i></a>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="3" class="text-center text-muted py-3">No LLM call logs found.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mt-3">
+  <span class="text-muted">Page {{ page }} of {{ total_pages }}</span>
+  <div class="d-flex gap-2">
+    {% if page > 1 %}
+      <a class="btn btn-sm btn-secondary" href="{{ url_for('llm_space.llm_calls_list', transaction_id=transaction_id, page=page-1) }}">Previous</a>
+    {% endif %}
+    {% if page < total_pages %}
+      <a class="btn btn-sm btn-secondary" href="{{ url_for('llm_space.llm_calls_list', transaction_id=transaction_id, page=page+1) }}">Next</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

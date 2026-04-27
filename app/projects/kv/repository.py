@@ -10,6 +10,18 @@ from app.core.db import get_db_connection
 KEY_RE = re.compile(r"^[A-Za-z0-9_:\-.]{1,120}$")
 ICON_CLASS_RE = re.compile(r"^[A-Za-z0-9 _\-]{1,80}$")
 
+DEFAULT_DASHBOARD_ORDER_BY_KEY = {
+    "bookmarks": 1,
+    "sb": 2,
+    "ft": 3,
+    "dash_llm_space": 4,
+    "shortcuts": 5,
+    "toggles": 6,
+    "sql": 7,
+    "kv": 8,
+    "uploads": 9,
+}
+
 
 def _normalized_category(category: str | None) -> str:
     value = (category or "").strip()
@@ -264,6 +276,7 @@ def list_dashboard_projects() -> list[dict]:
             continue
 
         icon_class = default_icon
+        order_value: int | None = None
         metadata_raw = (additional_info or "").strip()
         if metadata_raw:
             try:
@@ -272,8 +285,22 @@ def list_dashboard_projects() -> list[dict]:
                     candidate = str(metadata.get("icon") or "").strip()
                     if candidate and ICON_CLASS_RE.fullmatch(candidate):
                         icon_class = candidate
+                    raw_order = metadata.get("order")
+                    if isinstance(raw_order, bool):
+                        raw_order = None
+                    if raw_order is not None:
+                        try:
+                            order_value = int(raw_order)
+                        except (TypeError, ValueError):
+                            order_value = None
             except (json.JSONDecodeError, TypeError, ValueError):
                 icon_class = default_icon
+
+        if slug == "dash_llm_space":
+            icon_class = "fa-solid fa-chart-pie"
+
+        if order_value is None:
+            order_value = DEFAULT_DASHBOARD_ORDER_BY_KEY.get(slug, 9999)
 
         projects.append(
             {
@@ -281,6 +308,8 @@ def list_dashboard_projects() -> list[dict]:
                 "title": value or key,
                 "path": f"/{slug}",
                 "icon_class": icon_class,
+                "order": order_value,
             }
         )
+    projects.sort(key=lambda p: (int(p.get("order", 9999)), str(p.get("title", "")).lower()))
     return projects

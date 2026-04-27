@@ -60,6 +60,6 @@
 
 {% macro llm_actions(item) -%}
 <div class="btn-group btn-group-sm" role="group" aria-label="Row actions">
-  <a class="btn btn-secondary" href="{{ url_for('ft.ft_llm_call_detail', call_id=item.call_id) }}" title="View"><i class="fa-solid fa-eye"></i></a>
+  <a class="btn btn-secondary" href="{{ url_for('llm_space.llm_call_detail', call_id=item.call_id) }}" title="View"><i class="fa-solid fa-eye"></i></a>
 </div>
 {%- endmacro %}

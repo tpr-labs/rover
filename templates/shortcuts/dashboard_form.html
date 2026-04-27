@@ -1,0 +1,67 @@
+{% extends "shared/base.html" %}
+{% block title %}{% if mode == 'create' %}Create Dashboard Item{% else %}Edit Dashboard Item{% endif %} · Rover{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0 text-white">{% if mode == 'create' %}Create Dashboard Item{% else %}Edit Dashboard Item{% endif %}</h1>
+  <a class="btn btn-secondary" href="{{ url_for('shortcuts.dashboard_items_list') }}"><i class="fa-solid fa-arrow-left me-1"></i>Back</a>
+</div>
+
+{% if error_message %}
+<div class="alert alert-danger">{{ error_message }}</div>
+{% endif %}
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+
+      <div class="mb-3">
+        <label class="form-label">Unique Ref (item_key)</label>
+        <input class="form-control" name="item_key" maxlength="120" required {% if mode == 'edit' %}readonly{% endif %}
+               placeholder="e.g. dash_llm_space"
+               value="{{ item.item_key if item else '' }}" />
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Display Name (item_value)</label>
+        <input class="form-control" name="item_value" maxlength="500" required
+               placeholder="e.g. LLM Space"
+               value="{{ item.item_value if item else '' }}" />
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Icon Class</label>
+        <input class="form-control" name="icon_class" maxlength="80"
+               placeholder="e.g. fa-solid fa-chart-pie"
+               value="{{ icon_class if icon_class is defined else '' }}" />
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Display Order</label>
+        <input class="form-control" name="display_order" type="number" min="1" step="1"
+               placeholder="e.g. 4"
+               value="{{ display_order if display_order is defined else '' }}" />
+        <div class="form-text text-muted">Lower number appears first on Dashboard.</div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Additional Info JSON (optional advanced metadata)</label>
+        <textarea class="form-control" name="additional_info" rows="4" placeholder="e.g. &#123;&quot;notes&quot;:&quot;optional metadata&quot;&#125;">{{ item.additional_info if item else '' }}</textarea>
+        <div class="form-text text-muted">Optional: keep extra metadata here. <code>icon</code> and <code>order</code> are controlled by dedicated fields above.</div>
+      </div>
+
+      {% if mode == 'edit' %}
+      <div class="mb-3">
+        <label class="form-label">Status</label>
+        <select class="form-select" name="is_active">
+          <option value="Y" {% if (item and item.is_active == 'Y') %}selected{% endif %}>Active</option>
+          <option value="N" {% if (item and item.is_active == 'N') %}selected{% endif %}>Inactive</option>
+        </select>
+      </div>
+      {% endif %}
+
+      <button class="btn btn-primary" type="submit"><i class="fa-solid fa-check me-1"></i>{% if mode == 'create' %}Create Dashboard Item{% else %}Update Dashboard Item{% endif %}</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
