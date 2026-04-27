@@ -8,7 +8,9 @@ from bs4 import BeautifulSoup
 from flask import Blueprint, jsonify, redirect, render_template, request, url_for
 
 from app.core.auth import is_valid_csrf
+from . import llm
 from .repository import (
+    count_uncategorized_bookmarks,
     create_bookmark,
     delete_bookmark,
     get_bookmark,
@@ -241,6 +243,8 @@ def bookmarks_list():
         item["updated_at_human"] = _humanize_timestamp(item.get("updated_at"))
         item["created_at_human"] = _humanize_timestamp(item.get("created_at"))
 
+    uncategorized_count = count_uncategorized_bookmarks()
+
     return render_template(
         "bookmarks/list.html",
         items=items,
@@ -249,7 +253,26 @@ def bookmarks_list():
         starred=starred,
         page=page,
         total_pages=total_pages,
+        uncategorized_count=uncategorized_count,
     )
+
+
+@bookmarks_bp.post("/bookmarks/categorize")
+def bookmarks_categorize_uncategorized():
+    if not is_valid_csrf(request.form.get("csrf_token")):
+        return redirect(url_for("bookmarks.bookmarks_list", msg="Session expired. Please try again."))
+
+    try:
+        result = llm.process_uncategorized_bookmarks(limit=10)
+        msg = (
+            f"Categorized batch: processed {result['processed']}, "
+            f"failed {result['failed']}, remaining {result['remaining']}"
+        )
+        return redirect(url_for("bookmarks.bookmarks_list", msg=msg))
+    except ValueError as exc:
+        return redirect(url_for("bookmarks.bookmarks_list", msg=str(exc)))
+    except Exception:
+        return redirect(url_for("bookmarks.bookmarks_list", msg="Bookmark categorization failed"))
 
 
 @bookmarks_bp.get("/bookmarks/new")

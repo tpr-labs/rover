@@ -232,3 +232,58 @@ def switch_bookmark_starred(bookmark_id: int, desired_starred: int | str | None)
             )
             conn.commit()
             return cur.rowcount > 0
+
+
+def count_uncategorized_bookmarks() -> int:
+    sql = """
+        SELECT COUNT(*)
+        FROM bookmarks
+        WHERE category IS NULL
+           OR TRIM(category) = ''
+           OR LOWER(TRIM(category)) IN ('none', 'null')
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql)
+            row = cur.fetchone()
+            return int(row[0] or 0) if row else 0
+
+
+def list_uncategorized_bookmarks(limit: int = 10) -> list[dict]:
+    cap = max(1, min(int(limit), 10))
+    sql = """
+        SELECT bookmark_id, url, title, category
+        FROM bookmarks
+        WHERE category IS NULL
+           OR TRIM(category) = ''
+           OR LOWER(TRIM(category)) IN ('none', 'null')
+        ORDER BY updated_at DESC
+        FETCH FIRST :limit ROWS ONLY
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, {"limit": cap})
+            return [
+                {
+                    "bookmark_id": int(r[0]),
+                    "url": r[1],
+                    "title": r[2],
+                    "category": r[3],
+                }
+                for r in cur.fetchall()
+            ]
+
+
+def update_bookmark_category(bookmark_id: int, category: str) -> bool:
+    normalized = (category or "").strip()
+    if not normalized:
+        raise ValueError("Category is required")
+    if len(normalized) > 100:
+        raise ValueError("Category must be at most 100 characters")
+
+    sql = "UPDATE bookmarks SET category = :category WHERE bookmark_id = :bookmark_id"
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, {"bookmark_id": bookmark_id, "category": normalized})
+            conn.commit()
+            return cur.rowcount > 0
