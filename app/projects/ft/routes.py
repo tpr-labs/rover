@@ -337,28 +337,12 @@ def ft_accounts_list():
 
 @ft_bp.get("/ft/llm-calls")
 def ft_llm_calls_list():
-    page = max(1, int(request.args.get("page", "1")))
-    tx_raw = (request.args.get("transaction_id") or "").strip()
-    tx_id = int(tx_raw) if tx_raw.isdigit() else None
-    items, total_pages = list_llm_calls(page=page, page_size=20, transaction_id=tx_id)
-    for i in items:
-        i["created_at_human"] = _humanize_timestamp(i.get("created_at"))
-    return render_template(
-        "ft/llm_calls_list.html",
-        items=items,
-        page=page,
-        total_pages=total_pages,
-        transaction_id=tx_raw,
-    )
+    return redirect(url_for("llm_space.llm_calls_list", transaction_id=request.args.get("transaction_id", ""), page=request.args.get("page", "1")))
 
 
 @ft_bp.get("/ft/llm-calls/<int:call_id>")
 def ft_llm_call_detail(call_id: int):
-    item = get_llm_call(call_id)
-    if not item:
-        return render_template("shared/error.html"), 404
-    item["created_at_human"] = _humanize_timestamp(item.get("created_at"))
-    return render_template("ft/llm_call_detail.html", item=item)
+    return redirect(url_for("llm_space.llm_call_detail", call_id=call_id))
 
 
 @ft_bp.get("/ft/accounts/new")
