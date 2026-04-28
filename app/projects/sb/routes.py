@@ -80,7 +80,12 @@ def render_markdown_safely(content_md: str) -> str:
             "clickable_checkbox": False,
         }
     }
-    optional_exts = ["pymdownx.tilde", "pymdownx.tasklist", "pymdownx.superfences"]
+    optional_exts = [
+        "pymdownx.tilde",
+        "pymdownx.tasklist",
+        "pymdownx.superfences",
+        "pymdownx.magiclink",
+    ]
     for ext in optional_exts:
         module_name = ext.split(".", 1)[0]
         try:
@@ -107,6 +112,7 @@ def render_markdown_safely(content_md: str) -> str:
             "ol",
             "li",
             "blockquote",
+            "img",
             "table",
             "thead",
             "tbody",
@@ -124,10 +130,12 @@ def render_markdown_safely(content_md: str) -> str:
             "a": ["href", "title", "target"],
             "code": ["class"],
             "pre": ["class"],
+            "img": ["src", "alt", "title", "loading", "referrerpolicy"],
             "input": ["type", "checked", "disabled"],
             "ul": ["class"],
             "li": ["class"],
         },
+        protocols=set(bleach.sanitizer.ALLOWED_PROTOCOLS).union({"data"}),
         strip=True,
     )
 
@@ -294,14 +302,6 @@ def sb_graph():
     return render_template("sb/graph.html", graph_data=graph_data, graph_error=graph_error)
 
 
-@sb_bp.post("/sb/markdown/preview")
-def sb_markdown_preview():
-    if not is_valid_csrf(request.form.get("csrf_token")):
-        return jsonify({"ok": False, "error": "Session expired. Please try again."}), 400
-    content_md = request.form.get("content_md", "")
-    return jsonify({"ok": True, "html": render_markdown_safely(content_md)})
-
-
 @sb_bp.get("/sb/graph/data")
 def sb_graph_data():
     data = get_graph_snapshot(scope="all", root_folder_id=None)
@@ -417,7 +417,6 @@ def sb_new_file_page():
         all_folders=list_active_folders(),
         links=[],
         link_candidates=[],
-        preview_html="",
         error_message=None,
     )
 
@@ -451,7 +450,6 @@ def sb_new_file_submit():
             all_folders=list_active_folders(),
             links=[],
             link_candidates=[],
-            preview_html=render_markdown_safely(content_md),
             error_message=str(exc),
         ), 400
 
@@ -555,7 +553,6 @@ def sb_file_edit_page(file_id: int):
         all_folders=list_active_folders(),
         links=list_file_links(file_id),
         link_candidates=list_link_candidates(file_id),
-        preview_html=render_markdown_safely(file.get("content_md") or ""),
         error_message=None,
         message=request.args.get("msg"),
     )
@@ -586,7 +583,6 @@ def sb_file_edit_submit(file_id: int):
             all_folders=list_active_folders(),
             links=list_file_links(file_id),
             link_candidates=list_link_candidates(file_id),
-            preview_html=render_markdown_safely(content_md),
             error_message=str(exc),
         ), 400
 
