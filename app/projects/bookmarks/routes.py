@@ -16,7 +16,9 @@ from .repository import (
     count_uncategorized_bookmarks,
     create_bookmark,
     delete_bookmark,
+    fail_study_card_job,
     get_latest_study_card_job,
+    get_study_card_job_by_id,
     get_study_card_job_detail,
     get_bookmark,
     list_study_card_jobs,
@@ -231,6 +233,21 @@ def _fallback_title_from_url(url: str) -> str:
     return (url or "Untitled Bookmark")[:500]
 
 
+def _parse_quick_bookmark_input(raw_text: str) -> tuple[str, str]:
+    text = (raw_text or "").strip()
+    if not text:
+        raise ValueError("Please enter bookmark text")
+
+    m = re.search(r"https?://\S+", text)
+    if not m:
+        raise ValueError("Quick add expects a valid URL (http/https)")
+
+    url = m.group(0).rstrip(".,;)")
+    remainder = (text[:m.start()] + " " + text[m.end():]).strip()
+    title = re.sub(r"\s+", " ", remainder).strip()
+    return url, title
+
+
 @bookmarks_bp.get("/bookmarks")
 def bookmarks_list():
     search = request.args.get("q", "")
@@ -271,10 +288,13 @@ def bookmarks_categorize_uncategorized():
 
     try:
         result = llm.process_uncategorized_bookmarks(limit=10)
-        msg = (
-            f"Categorized batch: processed {result['processed']}, "
-            f"failed {result['failed']}, remaining {result['remaining']}"
-        )
+        processed = int(result.get("processed") or 0)
+        failed = int(result.get("failed") or 0)
+        remaining = int(result.get("remaining") or 0)
+        if failed == 0:
+            msg = f"Bookmark categorization complete: processed {processed}, remaining {remaining}."
+        else:
+            msg = f"Bookmark categorization finished: processed {processed}, failed {failed}, remaining {remaining}."
         return redirect(url_for("bookmarks.bookmarks_list", msg=msg))
     except ValueError as exc:
         return redirect(url_for("bookmarks.bookmarks_list", msg=str(exc)))
@@ -319,6 +339,24 @@ def bookmarks_new_submit():
         return redirect(url_for("bookmarks.bookmarks_detail", bookmark_id=bookmark_id, msg="created"))
     except ValueError as exc:
         return render_template("bookmarks/form.html", mode="create", item=item, error_message=str(exc)), 400
+
+
+@bookmarks_bp.post("/bookmarks/quick-add")
+def bookmarks_quick_add_submit():
+    if not is_valid_csrf(request.form.get("csrf_token")):
+        return redirect(url_for("bookmarks.bookmarks_list", msg="Session expired. Please try again."))
+
+    raw_text = request.form.get("raw_text") or ""
+    try:
+        url, title = _parse_quick_bookmark_input(raw_text)
+        if not title:
+            title = _extract_title_from_url(url) or _fallback_title_from_url(url)
+        create_bookmark(url=url, title=title, category="", starred=0, notes="")
+        return redirect(url_for("bookmarks.bookmarks_list", msg="Quick bookmark added"))
+    except ValueError as exc:
+        return redirect(url_for("bookmarks.bookmarks_list", msg=str(exc)))
+    except Exception:
+        return redirect(url_for("bookmarks.bookmarks_list", msg="Failed to add quick bookmark"))
 
 
 @bookmarks_bp.get("/bookmarks/<int:bookmark_id>")
@@ -532,3 +570,33 @@ def bookmarks_study_card_job_detail(job_id: int):
     item["finished_at_human"] = _humanize_timestamp(item.get("finished_at"))
     item["updated_at_human"] = _humanize_timestamp(item.get("updated_at"))
     return render_template("bookmarks/job_detail.html", item=item)
+
+
+@bookmarks_bp.post("/bookmarks/study-card-jobs/<int:job_id>/mark-failed")
+def bookmarks_mark_study_card_job_failed(job_id: int):
+    if not is_valid_csrf(request.form.get("csrf_token")):
+        return redirect(url_for("bookmarks.bookmarks_study_card_jobs_list", msg="Session expired. Please try again."))
+
+    job = get_study_card_job_by_id(job_id)
+    if not job:
+        return redirect(url_for("bookmarks.bookmarks_study_card_jobs_list", msg="Job not found"))
+
+    status = (job.get("status") or "").upper()
+    if status in {"COMPLETED", "FAILED"}:
+        return redirect(
+            url_for(
+                "bookmarks.bookmarks_study_card_job_detail",
+                job_id=job_id,
+                msg=f"Job already in terminal status: {status}",
+            )
+        )
+
+    reason = (request.form.get("reason") or "").strip() or "Manually marked as failed by user"
+    fail_study_card_job(job_id, reason)
+    return redirect(
+        url_for(
+            "bookmarks.bookmarks_study_card_job_detail",
+            job_id=job_id,
+            msg="Job marked as FAILED manually",
+        )
+    )
