@@ -27,6 +27,20 @@
 
 <div class="card shadow-sm mb-3">
   <div class="card-body">
+    <form method="post" action="{{ url_for('bookmarks.bookmarks_quick_add_submit') }}" class="row g-2 align-items-center">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <div class="col-lg-10">
+        <input class="form-control" name="raw_text" placeholder="Quick add: paste URL (optionally include title text)" required />
+      </div>
+      <div class="col-lg-2 d-grid">
+        <button class="btn btn-primary" type="submit"><i class="fa-solid fa-plus me-1"></i>Add Bookmark</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
     <form method="get" class="row g-2">
       <div class="col-md-4">
         <input class="form-control" name="q" placeholder="Search URL/title/category/notes" value="{{ search }}" />

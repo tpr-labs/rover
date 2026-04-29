@@ -61,9 +61,19 @@
             <td>{{ item.started_at_human }}</td>
             <td>{{ item.finished_at_human }}</td>
             <td class="text-end">
-              <a class="btn btn-sm btn-secondary" href="{{ url_for('bookmarks.bookmarks_study_card_job_detail', job_id=item.job_id) }}">
-                <i class="fa-solid fa-eye"></i>
-              </a>
+              <div class="d-inline-flex gap-1">
+                <a class="btn btn-sm btn-secondary" href="{{ url_for('bookmarks.bookmarks_study_card_job_detail', job_id=item.job_id) }}">
+                  <i class="fa-solid fa-eye"></i>
+                </a>
+                {% if item.status in ['QUEUED', 'RUNNING'] %}
+                <form method="post" action="{{ url_for('bookmarks.bookmarks_mark_study_card_job_failed', job_id=item.job_id) }}" onsubmit="return confirm('Mark this job as FAILED manually?');" class="d-inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                  <button class="btn btn-sm btn-secondary" type="submit" title="Mark Failed">
+                    <i class="fa-solid fa-triangle-exclamation text-warning"></i>
+                  </button>
+                </form>
+                {% endif %}
+              </div>
             </td>
           </tr>
         {% else %}
