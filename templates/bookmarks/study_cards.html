@@ -1,0 +1,83 @@
+{% extends "shared/base.html" %}
+{% block title %}Study Cards · {{ item.title }} · Rover{% endblock %}
+{% block content %}
+<style>
+  .study-card {
+    background: linear-gradient(180deg, #0f172a 0%, #0b1220 100%);
+    border: 1px solid #1e293b;
+    border-radius: 14px;
+    height: 100%;
+  }
+  .study-card .q {
+    color: #e2e8f0;
+    font-weight: 700;
+    font-size: 1.02rem;
+    line-height: 1.45;
+  }
+  .study-card .a {
+    color: #cbd5e1;
+    line-height: 1.75;
+    white-space: pre-wrap;
+  }
+  .study-card .src {
+    color: #94a3b8;
+    font-size: .86rem;
+    line-height: 1.6;
+    border-top: 1px dashed #334155;
+    margin-top: .9rem;
+    padding-top: .7rem;
+  }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0 text-white">Study Cards</h1>
+  <div class="d-flex gap-2">
+    <a class="btn btn-secondary" href="{{ url_for('bookmarks.bookmarks_detail', bookmark_id=item.bookmark_id) }}">
+      <i class="fa-solid fa-arrow-left me-1"></i>Back
+    </a>
+    <a class="btn btn-secondary" href="{{ item.url }}" target="_blank" rel="noopener noreferrer">
+      <i class="fa-solid fa-up-right-from-square me-1"></i>Open Source
+    </a>
+  </div>
+</div>
+
+{% if message %}
+<div class="alert alert-info">{{ message }}</div>
+{% endif %}
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div>
+        <div class="fw-semibold text-light">{{ item.title }}</div>
+        <div class="small text-muted">{{ cards|length }} informative card{{ '' if cards|length == 1 else 's' }} generated</div>
+      </div>
+      <form method="post" action="{{ url_for('bookmarks.bookmarks_create_study_cards', bookmark_id=item.bookmark_id) }}" class="m-0">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <input type="hidden" name="existing_action" value="replace" />
+        <button class="btn btn-primary" type="submit">
+          <i class="fa-solid fa-rotate me-1"></i>Regenerate
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  {% for c in cards %}
+  <div class="col-12 col-lg-6">
+    <div class="study-card p-3 shadow-sm">
+      <div class="small text-primary-emphasis mb-2">Card {{ c.card_no }}</div>
+      <div class="q mb-2">{{ c.question }}</div>
+      <div class="a">{{ c.answer }}</div>
+      {% if c.source_excerpt %}
+      <div class="src">
+        <div class="text-uppercase fw-semibold mb-1" style="font-size:.72rem; letter-spacing:.04em;">Source note</div>
+        {{ c.source_excerpt }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
