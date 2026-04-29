@@ -8,7 +8,7 @@ from app.core.db import get_db_connection
 
 
 KEY_RE = re.compile(r"^[A-Za-z0-9_:\-.]{1,120}$")
-ICON_CLASS_RE = re.compile(r"^[A-Za-z0-9 _\-]{1,80}$")
+ICON_TOKEN_RE = re.compile(r"^[A-Za-z0-9\-]{2,40}$")
 
 DEFAULT_DASHBOARD_ORDER_BY_KEY = {
     "bookmarks": 1,
@@ -31,6 +31,24 @@ def _normalized_category(category: str | None) -> str:
 def _normalized_sub_category(sub_category: str | None) -> str | None:
     value = (sub_category or "").strip()
     return value or None
+
+
+def _normalize_icon_class(candidate: str | None, default_icon: str) -> str:
+    text = (candidate or "").strip()
+    if not text:
+        return default_icon
+
+    parts = [p for p in text.split() if p]
+    if not parts or len(parts) > 4:
+        return default_icon
+    if not all(ICON_TOKEN_RE.fullmatch(p) for p in parts):
+        return default_icon
+
+    # Accept only Font Awesome-like class sets.
+    if not any(p == "fa" or p.startswith("fa-") for p in parts):
+        return default_icon
+
+    return " ".join(parts)
 
 
 def validate_key_value_input(
@@ -283,8 +301,7 @@ def list_dashboard_projects() -> list[dict]:
                 metadata = json.loads(metadata_raw)
                 if isinstance(metadata, dict):
                     candidate = str(metadata.get("icon") or "").strip()
-                    if candidate and ICON_CLASS_RE.fullmatch(candidate):
-                        icon_class = candidate
+                    icon_class = _normalize_icon_class(candidate, default_icon)
                     raw_order = metadata.get("order")
                     if isinstance(raw_order, bool):
                         raw_order = None
@@ -295,9 +312,6 @@ def list_dashboard_projects() -> list[dict]:
                             order_value = None
             except (json.JSONDecodeError, TypeError, ValueError):
                 icon_class = default_icon
-
-        if slug == "dash_llm_space":
-            icon_class = "fa-solid fa-chart-pie"
 
         if order_value is None:
             order_value = DEFAULT_DASHBOARD_ORDER_BY_KEY.get(slug, 9999)

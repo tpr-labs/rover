@@ -1,4 +1,5 @@
 import re
+import threading
 from datetime import date, datetime
 from urllib.parse import parse_qs, unquote, urljoin, urlparse
 
@@ -10,11 +11,17 @@ from flask import Blueprint, jsonify, redirect, render_template, request, url_fo
 from app.core.auth import is_valid_csrf
 from . import llm
 from .repository import (
+    create_study_card_job,
+    count_study_cards,
     count_uncategorized_bookmarks,
     create_bookmark,
     delete_bookmark,
+    get_latest_study_card_job,
+    get_study_card_job_detail,
     get_bookmark,
+    list_study_card_jobs,
     list_bookmarks,
+    list_study_cards,
     switch_bookmark_starred,
     update_bookmark,
 )
@@ -319,7 +326,15 @@ def bookmarks_detail(bookmark_id: int):
     item = get_bookmark(bookmark_id)
     if not item:
         return render_template("shared/error.html"), 404
-    return render_template("bookmarks/detail.html", item=item, message=request.args.get("msg"))
+    latest_job = get_latest_study_card_job(bookmark_id)
+    ask_replace = (request.args.get("ask_replace") or "").strip() in {"1", "true", "yes"}
+    return render_template(
+        "bookmarks/detail.html",
+        item=item,
+        latest_job=latest_job,
+        message=request.args.get("msg"),
+        ask_replace=ask_replace,
+    )
 
 
 @bookmarks_bp.get("/bookmarks/<int:bookmark_id>/edit")
@@ -383,3 +398,137 @@ def bookmarks_switch_star(bookmark_id: int):
     if not ok:
         return jsonify({"ok": False, "error": "Bookmark not found"}), 404
     return jsonify({"ok": True, "starred": int(desired)})
+
+
+@bookmarks_bp.post("/bookmarks/<int:bookmark_id>/study-cards/create")
+def bookmarks_create_study_cards(bookmark_id: int):
+    if not is_valid_csrf(request.form.get("csrf_token")):
+        return render_template("shared/error.html"), 400
+
+    item = get_bookmark(bookmark_id)
+    if not item:
+        return render_template("shared/error.html"), 404
+
+    existing_count = count_study_cards(bookmark_id)
+    existing_action = (request.form.get("existing_action") or "").strip().lower()
+
+    if existing_count > 0 and existing_action not in {"replace", "keep"}:
+        return redirect(
+            url_for(
+                "bookmarks.bookmarks_detail",
+                bookmark_id=bookmark_id,
+                ask_replace=1,
+                msg="Study cards already exist. Choose Replace or Keep.",
+            )
+        )
+
+    if existing_count > 0 and existing_action == "keep":
+        return redirect(
+            url_for(
+                "bookmarks.bookmark_study_cards_view",
+                bookmark_id=bookmark_id,
+                msg="Kept existing study cards.",
+            )
+        )
+
+    latest_job = get_latest_study_card_job(bookmark_id)
+    if latest_job and latest_job.get("status") in {"QUEUED", "RUNNING"}:
+        return redirect(
+            url_for(
+                "bookmarks.bookmarks_detail",
+                bookmark_id=bookmark_id,
+                msg="Study card generation is already in progress.",
+            )
+        )
+
+    try:
+        job_id = create_study_card_job(bookmark_id)
+        threading.Thread(
+            target=llm.process_study_card_job,
+            args=(job_id,),
+            daemon=True,
+            name=f"bookmark-study-job-{job_id}",
+        ).start()
+        return redirect(
+            url_for(
+                "bookmarks.bookmarks_detail",
+                bookmark_id=bookmark_id,
+                msg="Study card generation started. You can check status here and view cards once ready.",
+            )
+        )
+    except ValueError as exc:
+        return redirect(url_for("bookmarks.bookmarks_detail", bookmark_id=bookmark_id, msg=str(exc)))
+    except Exception:
+        return redirect(url_for("bookmarks.bookmarks_detail", bookmark_id=bookmark_id, msg="Failed to start study card generation"))
+
+
+@bookmarks_bp.get("/bookmarks/<int:bookmark_id>/study-cards/job-status")
+def bookmarks_study_cards_job_status(bookmark_id: int):
+    item = get_bookmark(bookmark_id)
+    if not item:
+        return jsonify({"ok": False, "error": "Bookmark not found"}), 404
+
+    latest_job = get_latest_study_card_job(bookmark_id)
+    card_count = count_study_cards(bookmark_id)
+    return jsonify(
+        {
+            "ok": True,
+            "status": (latest_job or {}).get("status"),
+            "error_message": (latest_job or {}).get("error_message"),
+            "card_count": card_count,
+            "has_cards": card_count > 0,
+            "view_url": url_for("bookmarks.bookmark_study_cards_view", bookmark_id=bookmark_id),
+        }
+    )
+
+
+@bookmarks_bp.get("/bookmarks/<int:bookmark_id>/study-cards")
+def bookmark_study_cards_view(bookmark_id: int):
+    item = get_bookmark(bookmark_id)
+    if not item:
+        return render_template("shared/error.html"), 404
+
+    cards = list_study_cards(bookmark_id)
+    if not cards:
+        return redirect(url_for("bookmarks.bookmarks_detail", bookmark_id=bookmark_id, msg="No study cards found"))
+
+    return render_template(
+        "bookmarks/study_cards.html",
+        item=item,
+        cards=cards,
+        message=request.args.get("msg"),
+    )
+
+
+@bookmarks_bp.get("/bookmarks/study-card-jobs")
+def bookmarks_study_card_jobs_list():
+    page = max(1, int(request.args.get("page", "1")))
+    bookmark_raw = (request.args.get("bookmark_id") or "").strip()
+    bookmark_id = int(bookmark_raw) if bookmark_raw.isdigit() else None
+
+    items, total_pages = list_study_card_jobs(page=page, page_size=25, bookmark_id=bookmark_id)
+    for item in items:
+        item["created_at_human"] = _humanize_timestamp(item.get("created_at"))
+        item["started_at_human"] = _humanize_timestamp(item.get("started_at"))
+        item["finished_at_human"] = _humanize_timestamp(item.get("finished_at"))
+
+    return render_template(
+        "bookmarks/jobs_list.html",
+        items=items,
+        page=page,
+        total_pages=total_pages,
+        bookmark_id=bookmark_raw,
+    )
+
+
+@bookmarks_bp.get("/bookmarks/study-card-jobs/<int:job_id>")
+def bookmarks_study_card_job_detail(job_id: int):
+    item = get_study_card_job_detail(job_id)
+    if not item:
+        return render_template("shared/error.html"), 404
+
+    item["created_at_human"] = _humanize_timestamp(item.get("created_at"))
+    item["started_at_human"] = _humanize_timestamp(item.get("started_at"))
+    item["finished_at_human"] = _humanize_timestamp(item.get("finished_at"))
+    item["updated_at_human"] = _humanize_timestamp(item.get("updated_at"))
+    return render_template("bookmarks/job_detail.html", item=item)
