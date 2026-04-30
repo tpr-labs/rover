@@ -1,0 +1,264 @@
+{% extends "shared/base.html" %}
+{% block title %}Spend Tracker · Finance Tracker · Rover{% endblock %}
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<style>
+  .tracker-card {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: .85rem;
+    box-shadow: 0 .35rem 1rem rgba(2, 6, 23, .25);
+  }
+  .tracker-chart {
+    width: 100%;
+    min-height: 320px;
+  }
+  .tracker-kpi {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: .85rem;
+    padding: 1rem;
+    min-height: 120px;
+  }
+  .tracker-kpi-label { color: #94a3b8; font-size: .8rem; }
+  .tracker-kpi-value { color: #f8fafc; font-size: 1.5rem; font-weight: 700; }
+  .chart-title { color: #f8fafc; font-size: 1rem; font-weight: 600; }
+  .tracker-tooltip {
+    position: fixed;
+    z-index: 1200;
+    pointer-events: none;
+    background: rgba(2, 6, 23, .96);
+    color: #e2e8f0;
+    border: 1px solid #334155;
+    border-radius: .5rem;
+    padding: .45rem .6rem;
+    font-size: .78rem;
+    box-shadow: 0 .35rem 1rem rgba(2, 6, 23, .35);
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity .12s ease, transform .12s ease;
+    max-width: 280px;
+    white-space: nowrap;
+  }
+  .tracker-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem .7rem;
+    margin-bottom: .5rem;
+  }
+  .tracker-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .72rem;
+    color: #94a3b8;
+  }
+  .tracker-legend-swatch {
+    width: 12px;
+    height: 3px;
+    border-radius: 999px;
+    display: inline-block;
+  }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h1 class="h4 mb-1 text-white">Spend Tracker</h1>
+    <div class="text-muted small">Interactive spending analytics across time, category, and account.</div>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-secondary" href="{{ url_for('ft.ft_dashboard') }}"><i class="fa-solid fa-arrow-left me-1"></i>FT Dashboard</a>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 col-md-6 col-xl-3"><div class="tracker-kpi"><div class="tracker-kpi-label">Today Spend</div><div class="tracker-kpi-value">{{ '%.2f'|format(data.today_spend) }}</div></div></div>
+  <div class="col-12 col-md-6 col-xl-3"><div class="tracker-kpi"><div class="tracker-kpi-label">Last 7 Days Spend</div><div class="tracker-kpi-value">{{ '%.2f'|format(data.last7_spend) }}</div></div></div>
+  <div class="col-12 col-md-6 col-xl-3"><div class="tracker-kpi"><div class="tracker-kpi-label">This Month Spend</div><div class="tracker-kpi-value">{{ '%.2f'|format(data.month_spend) }}</div></div></div>
+  <div class="col-12 col-md-6 col-xl-3"><div class="tracker-kpi"><div class="tracker-kpi-label">Overall Spend</div><div class="tracker-kpi-value">{{ '%.2f'|format(data.overall_spend) }}</div></div></div>
+</div>
+
+<div class="row g-3">
+  <div class="col-12 col-xl-6">
+    <div class="tracker-card p-3">
+      <div class="chart-title mb-2">Last 7 Days Spend Trend</div>
+      <div id="chart-last7" class="tracker-chart"></div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-6">
+    <div class="tracker-card p-3">
+      <div class="chart-title mb-2">This Month Daily Spend</div>
+      <div id="chart-month" class="tracker-chart"></div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-6">
+    <div class="tracker-card p-3">
+      <div class="chart-title mb-2">Overall Spend by Category</div>
+      <div id="chart-category" class="tracker-chart"></div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-6">
+    <div class="tracker-card p-3">
+      <div class="chart-title mb-2">Overall Spend by Account</div>
+      <div id="chart-account" class="tracker-chart"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const trackerData = {{ data|tojson }};
+  const tooltip = d3.select('body').append('div').attr('class', 'tracker-tooltip');
+
+  function showTooltip(event, html) {
+    tooltip.html(html)
+      .style('left', `${event.clientX + 12}px`)
+      .style('top', `${event.clientY + 12}px`)
+      .style('opacity', 1)
+      .style('transform', 'translateY(0)');
+  }
+
+  function moveTooltip(event) {
+    tooltip.style('left', `${event.clientX + 12}px`)
+      .style('top', `${event.clientY + 12}px`);
+  }
+
+  function hideTooltip() {
+    tooltip.style('opacity', 0).style('transform', 'translateY(4px)');
+  }
+
+  function buildAccountSeries(xDomain, accountRows) {
+    const accountNames = [...new Set((accountRows || []).map(r => r.account))];
+    const byAccount = new Map(accountNames.map(n => [n, new Map()]));
+    (accountRows || []).forEach(r => byAccount.get(r.account).set(r.day, Number(r.spend || 0)));
+
+    return accountNames.map(name => ({
+      name,
+      values: xDomain.map(day => ({ day, spend: byAccount.get(name).get(day) || 0 })),
+    }));
+  }
+
+  function renderLegend(el, accountSeries, colors) {
+    const wrap = d3.select(el).append('div').attr('class', 'tracker-legend');
+    const allItems = [{ name: 'Overall', color: '#f8fafc' }].concat(
+      accountSeries.map(s => ({ name: s.name, color: colors(s.name) }))
+    );
+
+    const items = wrap.selectAll('.tracker-legend-item').data(allItems).enter().append('div').attr('class', 'tracker-legend-item');
+    items.append('span').attr('class', 'tracker-legend-swatch').style('background', d => d.color);
+    items.append('span').text(d => d.name);
+  }
+
+  function drawMultiLineChart(containerId, overallPoints, accountRows, xKey, yKey) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = '';
+
+    const xDomain = (overallPoints || []).map(d => d[xKey]);
+    const accountSeries = buildAccountSeries(xDomain, accountRows || []);
+    const color = d3.scaleOrdinal(d3.schemeTableau10).domain(accountSeries.map(s => s.name));
+    renderLegend(el, accountSeries, color);
+
+    const width = el.clientWidth || 520;
+    const height = 300;
+    const margin = {top: 18, right: 20, bottom: 38, left: 48};
+    const svg = d3.select(el).append('svg').attr('width', width).attr('height', height);
+
+    const x = d3.scalePoint().domain(xDomain).range([margin.left, width - margin.right]);
+    const allValues = [];
+    (overallPoints || []).forEach(d => allValues.push(Number(d[yKey] || 0)));
+    accountSeries.forEach(s => s.values.forEach(v => allValues.push(Number(v.spend || 0))));
+    const yMax = d3.max(allValues) || 0;
+    const y = d3.scaleLinear().domain([0, yMax * 1.15 || 1]).nice().range([height - margin.bottom, margin.top]);
+
+    svg.append('g').attr('transform', `translate(0,${height - margin.bottom})`)
+      .call(d3.axisBottom(x)).selectAll('text').attr('fill', '#94a3b8').attr('font-size', 11);
+    svg.append('g').attr('transform', `translate(${margin.left},0)`)
+      .call(d3.axisLeft(y).ticks(6)).selectAll('text').attr('fill', '#94a3b8').attr('font-size', 11);
+
+    accountSeries.forEach(series => {
+      svg.append('path')
+        .datum(series.values)
+        .attr('fill', 'none')
+        .attr('stroke', color(series.name))
+        .attr('stroke-width', 1.8)
+        .attr('opacity', .9)
+        .attr('d', d3.line().x(d => x(d.day)).y(d => y(d.spend)));
+
+      svg.selectAll(null)
+        .data(series.values)
+        .enter()
+        .append('circle')
+        .attr('cx', d => x(d.day))
+        .attr('cy', d => y(d.spend))
+        .attr('r', 3)
+        .attr('fill', color(series.name))
+        .on('mouseenter', (event, d) => showTooltip(event, `<strong>${series.name}</strong><br>${d.day}: ${d.spend.toFixed(2)}`))
+        .on('mousemove', moveTooltip)
+        .on('mouseleave', hideTooltip);
+    });
+
+    svg.append('path')
+      .datum(overallPoints || [])
+      .attr('fill', 'none')
+      .attr('stroke', '#f8fafc')
+      .attr('stroke-width', 4)
+      .attr('d', d3.line().x(d => x(d[xKey])).y(d => y(d[yKey])));
+
+    svg.selectAll('circle.overall').data(overallPoints || []).enter().append('circle')
+      .attr('cx', d => x(d[xKey]))
+      .attr('cy', d => y(d[yKey]))
+      .attr('r', 4.2)
+      .attr('fill', '#f8fafc')
+      .on('mouseenter', (event, d) => showTooltip(event, `<strong>Overall</strong><br>${d[xKey]}: ${Number(d[yKey] || 0).toFixed(2)}`))
+      .on('mousemove', moveTooltip)
+      .on('mouseleave', hideTooltip);
+  }
+
+  function drawBarChart(containerId, points, color) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = '';
+    const width = el.clientWidth || 520;
+    const height = 320;
+    const margin = {top: 16, right: 20, bottom: 78, left: 48};
+    const svg = d3.select(el).append('svg').attr('width', width).attr('height', height);
+
+    const x = d3.scaleBand().domain(points.map(d => d.label)).range([margin.left, width - margin.right]).padding(0.2);
+    const y = d3.scaleLinear().domain([0, d3.max(points, d => d.value) * 1.15 || 1]).nice().range([height - margin.bottom, margin.top]);
+
+    svg.append('g').attr('transform', `translate(0,${height - margin.bottom})`)
+      .call(d3.axisBottom(x))
+      .selectAll('text')
+      .attr('transform', 'rotate(-30)')
+      .style('text-anchor', 'end')
+      .attr('fill', '#94a3b8')
+      .attr('font-size', 11);
+
+    svg.append('g').attr('transform', `translate(${margin.left},0)`)
+      .call(d3.axisLeft(y).ticks(6)).selectAll('text').attr('fill', '#94a3b8').attr('font-size', 11);
+
+    svg.selectAll('rect').data(points).enter().append('rect')
+      .attr('x', d => x(d.label))
+      .attr('y', d => y(d.value))
+      .attr('width', x.bandwidth())
+      .attr('height', d => y(0) - y(d.value))
+      .attr('rx', 6)
+      .attr('fill', color)
+      .on('mouseenter', (event, d) => showTooltip(event, `<strong>${d.label}</strong><br>Spend: ${Number(d.value || 0).toFixed(2)}`))
+      .on('mousemove', moveTooltip)
+      .on('mouseleave', hideTooltip);
+  }
+
+  drawMultiLineChart('chart-last7', trackerData.last7_daily || [], trackerData.last7_account_daily || [], 'day', 'spend');
+  drawMultiLineChart('chart-month', trackerData.month_daily || [], trackerData.month_account_daily || [], 'day', 'spend');
+  drawBarChart('chart-category', trackerData.category_spend || [], '#34d399');
+  drawBarChart('chart-account', trackerData.account_spend || [], '#f59e0b');
+
+  window.addEventListener('resize', () => {
+    drawMultiLineChart('chart-last7', trackerData.last7_daily || [], trackerData.last7_account_daily || [], 'day', 'spend');
+    drawMultiLineChart('chart-month', trackerData.month_daily || [], trackerData.month_account_daily || [], 'day', 'spend');
+    drawBarChart('chart-category', trackerData.category_spend || [], '#34d399');
+    drawBarChart('chart-account', trackerData.account_spend || [], '#f59e0b');
+  });
+</script>
+{% endblock %}

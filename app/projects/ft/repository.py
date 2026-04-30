@@ -743,6 +743,124 @@ def get_finance_summary() -> dict:
     }
 
 
+def get_spend_tracker_data() -> dict:
+    summary_sql = """
+        SELECT
+            NVL(SUM(CASE WHEN amount < 0 THEN ABS(amount) ELSE 0 END), 0) AS overall_spend,
+            NVL(SUM(CASE WHEN amount < 0 AND TRUNC(tx_date) = TRUNC(SYSDATE) THEN ABS(amount) ELSE 0 END), 0) AS today_spend,
+            NVL(SUM(CASE WHEN amount < 0 AND tx_date >= TRUNC(SYSDATE) - 6 THEN ABS(amount) ELSE 0 END), 0) AS last7_spend,
+            NVL(SUM(CASE WHEN amount < 0 AND TRUNC(tx_date, 'MM') = TRUNC(SYSDATE, 'MM') THEN ABS(amount) ELSE 0 END), 0) AS month_spend
+        FROM ft_transactions
+    """
+
+    last7_daily_sql = """
+        SELECT TO_CHAR(tx_date, 'YYYY-MM-DD') AS day_key,
+               NVL(SUM(ABS(amount)), 0) AS spend
+        FROM ft_transactions
+        WHERE amount < 0
+          AND tx_date >= TRUNC(SYSDATE) - 6
+        GROUP BY TO_CHAR(tx_date, 'YYYY-MM-DD')
+        ORDER BY day_key
+    """
+
+    category_sql = """
+        SELECT NVL(NULLIF(TRIM(category), ''), 'uncategorized') AS category_name,
+               NVL(SUM(ABS(amount)), 0) AS spend
+        FROM ft_transactions
+        WHERE amount < 0
+        GROUP BY NVL(NULLIF(TRIM(category), ''), 'uncategorized')
+        ORDER BY spend DESC
+        FETCH FIRST 12 ROWS ONLY
+    """
+
+    account_sql = """
+        SELECT NVL(a.account_name, 'Unassigned') AS account_name,
+               NVL(SUM(ABS(t.amount)), 0) AS spend
+        FROM ft_transactions t
+        LEFT JOIN ft_accounts a ON a.account_id = t.account_id
+        WHERE t.amount < 0
+        GROUP BY NVL(a.account_name, 'Unassigned')
+        ORDER BY spend DESC
+        FETCH FIRST 12 ROWS ONLY
+    """
+
+    month_daily_sql = """
+        SELECT TO_CHAR(tx_date, 'DD') AS day_of_month,
+               NVL(SUM(ABS(amount)), 0) AS spend
+        FROM ft_transactions
+        WHERE amount < 0
+          AND TRUNC(tx_date, 'MM') = TRUNC(SYSDATE, 'MM')
+        GROUP BY TO_CHAR(tx_date, 'DD')
+        ORDER BY day_of_month
+    """
+
+    last7_account_daily_sql = """
+        SELECT TO_CHAR(t.tx_date, 'YYYY-MM-DD') AS day_key,
+               NVL(a.account_name, 'Unassigned') AS account_name,
+               NVL(SUM(ABS(t.amount)), 0) AS spend
+        FROM ft_transactions t
+        LEFT JOIN ft_accounts a ON a.account_id = t.account_id
+        WHERE t.amount < 0
+          AND t.tx_date >= TRUNC(SYSDATE) - 6
+        GROUP BY TO_CHAR(t.tx_date, 'YYYY-MM-DD'), NVL(a.account_name, 'Unassigned')
+        ORDER BY day_key, account_name
+    """
+
+    month_account_daily_sql = """
+        SELECT TO_CHAR(t.tx_date, 'DD') AS day_of_month,
+               NVL(a.account_name, 'Unassigned') AS account_name,
+               NVL(SUM(ABS(t.amount)), 0) AS spend
+        FROM ft_transactions t
+        LEFT JOIN ft_accounts a ON a.account_id = t.account_id
+        WHERE t.amount < 0
+          AND TRUNC(t.tx_date, 'MM') = TRUNC(SYSDATE, 'MM')
+        GROUP BY TO_CHAR(t.tx_date, 'DD'), NVL(a.account_name, 'Unassigned')
+        ORDER BY day_of_month, account_name
+    """
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(summary_sql)
+            summary_row = cur.fetchone() or (0, 0, 0, 0)
+
+            cur.execute(last7_daily_sql)
+            last7_daily = [{"day": r[0], "spend": float(r[1] or 0)} for r in cur.fetchall()]
+
+            cur.execute(last7_account_daily_sql)
+            last7_account_daily = [
+                {"day": r[0], "account": r[1], "spend": float(r[2] or 0)}
+                for r in cur.fetchall()
+            ]
+
+            cur.execute(month_daily_sql)
+            month_daily = [{"day": r[0], "spend": float(r[1] or 0)} for r in cur.fetchall()]
+
+            cur.execute(month_account_daily_sql)
+            month_account_daily = [
+                {"day": r[0], "account": r[1], "spend": float(r[2] or 0)}
+                for r in cur.fetchall()
+            ]
+
+            cur.execute(category_sql)
+            category_spend = [{"label": r[0], "value": float(r[1] or 0)} for r in cur.fetchall()]
+
+            cur.execute(account_sql)
+            account_spend = [{"label": r[0], "value": float(r[1] or 0)} for r in cur.fetchall()]
+
+    return {
+        "today_spend": float(summary_row[1] or 0),
+        "last7_spend": float(summary_row[2] or 0),
+        "month_spend": float(summary_row[3] or 0),
+        "overall_spend": float(summary_row[0] or 0),
+        "last7_daily": last7_daily,
+        "last7_account_daily": last7_account_daily,
+        "month_daily": month_daily,
+        "month_account_daily": month_account_daily,
+        "category_spend": category_spend,
+        "account_spend": account_spend,
+    }
+
+
 def resolve_account_id_by_name(name: str | None) -> int | None:
     if not name:
         return None

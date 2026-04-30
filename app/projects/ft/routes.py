@@ -12,6 +12,7 @@ from .repository import (
     delete_transaction,
     get_account,
     get_finance_summary,
+    get_spend_tracker_data,
     get_llm_call,
     get_transaction,
     list_accounts,
@@ -112,6 +113,12 @@ def ft_dashboard():
     for i in summary.get("recent", []):
         i["tx_date_human"] = _humanize_date_only(i.get("tx_date"))
     return render_template("ft/dashboard.html", summary=summary, pending_items=pending_items)
+
+
+@ft_bp.get("/ft/tracker")
+def ft_spend_tracker():
+    data = get_spend_tracker_data()
+    return render_template("ft/tracker.html", data=data)
 
 
 @ft_bp.post("/ft/transactions/raw-ajax")
