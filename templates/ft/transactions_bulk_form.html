@@ -1,0 +1,48 @@
+{% extends "shared/base.html" %}
+{% block title %}Bulk Add Transactions · Finance Tracker · Rover{% endblock %}
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center mb-3 gap-2">
+  <h1 class="h4 mb-0 text-white">Bulk Add Transactions</h1>
+  <div class="d-flex gap-2">
+    <a class="btn btn-secondary" href="{{ url_for('ft.ft_transactions_list') }}"><i class="fa-solid fa-arrow-left me-1"></i>Back to Transactions</a>
+  </div>
+</div>
+
+{% if message %}
+<div class="alert alert-success">{{ message }}</div>
+{% endif %}
+{% if error_message %}
+<div class="alert alert-danger">{{ error_message }}</div>
+{% endif %}
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <p class="text-muted mb-2">
+      Enter one transaction per line. Each line will be queued as a <code>PENDING</code> transaction for later LLM processing.
+    </p>
+    <p class="small text-muted mb-3">
+      Example lines:<br>
+      <code>income 55000 from salary account for april</code><br>
+      <code>groceries 1240 from hdfc account 2026-04-28</code>
+    </p>
+
+    <form method="post" action="{{ url_for('ft.ft_transactions_bulk_submit') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <div class="mb-3">
+        <textarea
+          class="form-control"
+          name="raw_bulk_text"
+          rows="14"
+          placeholder="One transaction per line..."
+          required
+          style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;"
+        >{{ item.raw_bulk_text if item else '' }}</textarea>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-primary" type="submit"><i class="fa-solid fa-layer-group me-1"></i>Add Bulk Transactions</button>
+        <a class="btn btn-secondary" href="{{ url_for('ft.ft_transactions_list') }}">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
