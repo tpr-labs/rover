@@ -1,12 +1,14 @@
 from datetime import date, datetime
+from io import BytesIO
 
-from flask import Blueprint, redirect, render_template, request, url_for
+from flask import Blueprint, Response, redirect, render_template, request, send_file, url_for
 
 from app.core.auth import is_valid_csrf
 from .repository import (
     add_upload_link,
     create_upload_record,
     delete_upload_record,
+    fetch_object_bytes,
     get_upload,
     get_upload_par_url,
     is_upload_allowed,
@@ -19,6 +21,21 @@ from .repository import (
 )
 
 uploads_bp = Blueprint("uploads", __name__)
+
+_TEXT_PREVIEW_LIMIT = 512 * 1024
+
+
+def _is_image_type(content_type: str | None) -> bool:
+    return (content_type or "").lower().startswith("image/")
+
+
+def _is_text_type(content_type: str | None, filename: str | None) -> bool:
+    ctype = (content_type or "").lower()
+    if ctype.startswith("text/") or "json" in ctype:
+        return True
+
+    name = (filename or "").lower()
+    return name.endswith((".txt", ".json", ".log", ".csv", ".md", ".yaml", ".yml", ".xml", ".ini", ".toml"))
 
 
 def _humanize_timestamp(value) -> str:
@@ -160,6 +177,73 @@ def uploads_detail(upload_id: int):
         links=links,
         link_candidates=candidates,
         message=request.args.get("msg"),
+    )
+
+
+@uploads_bp.get("/uploads/<int:upload_id>/file")
+def uploads_file_view(upload_id: int):
+    item = get_upload(upload_id)
+    if not item:
+        return render_template("shared/error.html"), 404
+
+    content_type = item.get("content_type") or "application/octet-stream"
+    if _is_image_type(content_type):
+        return render_template("uploads/file_view.html", item=item, mode="image", text_content=None, is_truncated=False)
+
+    if _is_text_type(content_type, item.get("original_file_name")):
+        try:
+            body, _ = fetch_object_bytes(item.get("object_url") or "")
+            is_truncated = len(body) > _TEXT_PREVIEW_LIMIT
+            preview_bytes = body[:_TEXT_PREVIEW_LIMIT]
+            text_content = preview_bytes.decode("utf-8", errors="replace")
+        except ValueError as exc:
+            return render_template("uploads/file_view.html", item=item, mode="error", text_content=None, is_truncated=False, error_message=str(exc))
+
+        return render_template(
+            "uploads/file_view.html",
+            item=item,
+            mode="text",
+            text_content=text_content,
+            is_truncated=is_truncated,
+            error_message=None,
+        )
+
+    return render_template("uploads/file_view.html", item=item, mode="download", text_content=None, is_truncated=False)
+
+
+@uploads_bp.get("/uploads/<int:upload_id>/file/content")
+def uploads_file_content(upload_id: int):
+    item = get_upload(upload_id)
+    if not item:
+        return render_template("shared/error.html"), 404
+
+    try:
+        body, header_content_type = fetch_object_bytes(item.get("object_url") or "")
+    except ValueError:
+        return render_template("shared/error.html"), 502
+
+    content_type = header_content_type or item.get("content_type") or "application/octet-stream"
+    return Response(body, mimetype=content_type)
+
+
+@uploads_bp.get("/uploads/<int:upload_id>/download")
+def uploads_download(upload_id: int):
+    item = get_upload(upload_id)
+    if not item:
+        return render_template("shared/error.html"), 404
+
+    try:
+        body, header_content_type = fetch_object_bytes(item.get("object_url") or "")
+    except ValueError:
+        return render_template("shared/error.html"), 502
+
+    content_type = header_content_type or item.get("content_type") or "application/octet-stream"
+    filename = (item.get("original_file_name") or f"upload-{upload_id}").strip() or f"upload-{upload_id}"
+    return send_file(
+        BytesIO(body),
+        mimetype=content_type,
+        as_attachment=True,
+        download_name=filename,
     )
 
 

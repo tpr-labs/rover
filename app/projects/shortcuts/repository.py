@@ -13,6 +13,12 @@ SHORTCUT_CATEGORY = "shortcut"
 DASHBOARD_CATEGORY = "dashboard"
 ICON_CLASS_RE = re.compile(r"^[A-Za-z0-9\-\s]{3,80}$")
 
+DEFAULT_ICON_BY_PATH = {
+    "/ft": "fa-solid fa-wallet",
+    "/ft/tracker": "fa-solid fa-chart-line",
+    "/ft_tracker": "fa-solid fa-chart-line",
+}
+
 
 def _to_text(value: Any) -> str:
     if value is None:
@@ -501,6 +507,9 @@ def list_nav_shortcuts() -> list[dict]:
         if path in seen_paths:
             continue
         seen_paths.add(path)
+
+        if not icon_class:
+            icon_class = DEFAULT_ICON_BY_PATH.get(path)
 
         out.append({"key": key_text or path, "title": title, "path": path, "icon_class": icon_class})
 

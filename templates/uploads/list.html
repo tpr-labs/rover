@@ -46,6 +46,7 @@
             <td class="text-end">
               <div class="d-inline-flex gap-1">
                 <a class="btn btn-sm btn-secondary" href="{{ url_for('uploads.uploads_detail', upload_id=item.upload_id) }}">View</a>
+                <a class="btn btn-sm btn-secondary" href="{{ url_for('uploads.uploads_file_view', upload_id=item.upload_id) }}">File View</a>
                 <a class="btn btn-sm btn-secondary" href="{{ url_for('uploads.uploads_edit_page', upload_id=item.upload_id) }}">Edit</a>
                 <form method="post" action="{{ url_for('uploads.uploads_delete', upload_id=item.upload_id) }}" onsubmit="return confirm('Delete this upload from DB and OCI object storage?');">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
