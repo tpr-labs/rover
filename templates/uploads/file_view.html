@@ -5,7 +5,11 @@
   <h1 class="h4 mb-0 text-white">File View: {{ item.title }}</h1>
   <div class="d-flex gap-2">
     <a class="btn btn-secondary" href="{{ url_for('uploads.uploads_detail', upload_id=item.upload_id) }}"><i class="fa-solid fa-arrow-left me-1"></i>Back</a>
+    {% if read_object_url %}
+    <a class="btn btn-secondary" href="{{ read_object_url }}" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-download me-1"></i>Download</a>
+    {% else %}
     <a class="btn btn-secondary" href="{{ url_for('uploads.uploads_download', upload_id=item.upload_id) }}"><i class="fa-solid fa-download me-1"></i>Download</a>
+    {% endif %}
   </div>
 </div>
 
@@ -18,7 +22,7 @@
     {% if mode == 'image' %}
       <div class="text-center">
         <img
-          src="{{ url_for('uploads.uploads_file_content', upload_id=item.upload_id) }}"
+          src="{{ read_object_url or url_for('uploads.uploads_file_content', upload_id=item.upload_id) }}"
           alt="{{ item.original_file_name }}"
           class="img-fluid rounded border"
           style="max-height: 70vh;"
@@ -34,7 +38,11 @@
     {% else %}
       <div class="alert alert-info mb-0">
         Preview is not supported for this file type.
+        {% if read_object_url %}
+        <a class="alert-link" href="{{ read_object_url }}" target="_blank" rel="noopener noreferrer">Download the file</a> to view it locally.
+        {% else %}
         <a class="alert-link" href="{{ url_for('uploads.uploads_download', upload_id=item.upload_id) }}">Download the file</a> to view it locally.
+        {% endif %}
       </div>
     {% endif %}
   </div>

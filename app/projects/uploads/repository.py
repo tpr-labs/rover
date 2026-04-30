@@ -11,6 +11,7 @@ from app.core.db import get_db_connection
 
 UPLOAD_TOGGLE_KEY = "ALLOW_OCI_FILE_UPLOAD"
 UPLOAD_PAR_KEY = "oci_file_upload_par"
+READ_PAR_KEY = "oci_file_read_par"
 UPLOAD_OBJECT_PREFIX = "rover-uploads"
 
 _SAFE_FILENAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
@@ -57,7 +58,7 @@ def is_upload_allowed() -> bool:
             return (row[0] or "N").strip().upper() == "Y"
 
 
-def get_upload_par_url() -> str:
+def _get_par_url(item_key: str, key_label: str) -> str:
     sql = """
         SELECT additional_info, item_value
         FROM kv_store
@@ -68,17 +69,32 @@ def get_upload_par_url() -> str:
     """
     with get_db_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(sql, {"item_key": UPLOAD_PAR_KEY})
+            cur.execute(sql, {"item_key": item_key})
             row = cur.fetchone()
             if not row:
-                raise ValueError("KV key 'oci_file_upload_par' is missing")
+                raise ValueError(f"KV key '{key_label}' is missing")
 
             # Backward-compatible lookup:
             # prefer additional_info, fallback to item_value if that's where PAR is stored.
             par_candidate = (row[0] or "").strip() or (row[1] or "").strip()
             if not par_candidate:
-                raise ValueError("KV key 'oci_file_upload_par' is empty (set PAR in additional_info or item_value)")
+                raise ValueError(f"KV key '{key_label}' is empty (set PAR in additional_info or item_value)")
             return _normalize_par_url(par_candidate)
+
+
+def get_upload_par_url() -> str:
+    return _get_par_url(UPLOAD_PAR_KEY, UPLOAD_PAR_KEY)
+
+
+def get_read_par_url() -> str:
+    return _get_par_url(READ_PAR_KEY, READ_PAR_KEY)
+
+
+def get_read_object_url(object_name: str) -> str:
+    name = (object_name or "").strip()
+    if not name:
+        raise ValueError("Object name is missing")
+    return _object_url(get_read_par_url(), name)
 
 
 def list_uploads(search: str | None, page: int, page_size: int) -> tuple[list[dict], int]:
@@ -187,10 +203,8 @@ def upload_file_to_oci(original_file_name: str, file_bytes: bytes, content_type:
     return object_name, put_url, len(file_bytes), headers["Content-Type"]
 
 
-def fetch_object_bytes(object_url: str) -> tuple[bytes, str | None]:
-    url = (object_url or "").strip()
-    if not url:
-        raise ValueError("Object URL is missing")
+def fetch_object_bytes(object_name: str) -> tuple[bytes, str | None]:
+    url = get_read_object_url(object_name)
 
     response = requests.get(url, timeout=(10, 120))
     if response.status_code != 200:

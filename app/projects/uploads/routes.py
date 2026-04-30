@@ -11,6 +11,7 @@ from .repository import (
     fetch_object_bytes,
     get_upload,
     get_upload_par_url,
+    get_read_object_url,
     is_upload_allowed,
     list_link_candidates,
     list_upload_links,
@@ -169,6 +170,10 @@ def uploads_detail(upload_id: int):
 
     item["created_at_human"] = _humanize_timestamp(item.get("created_at"))
     item["updated_at_human"] = _humanize_timestamp(item.get("updated_at"))
+    try:
+        item["read_object_url"] = get_read_object_url(item.get("object_name") or "")
+    except ValueError:
+        item["read_object_url"] = None
     links = list_upload_links(upload_id)
     candidates = list_link_candidates(upload_id)
     return render_template(
@@ -186,18 +191,47 @@ def uploads_file_view(upload_id: int):
     if not item:
         return render_template("shared/error.html"), 404
 
+    try:
+        read_object_url = get_read_object_url(item.get("object_name") or "")
+    except ValueError as exc:
+        return render_template(
+            "uploads/file_view.html",
+            item=item,
+            mode="error",
+            text_content=None,
+            is_truncated=False,
+            error_message=str(exc),
+            read_object_url=None,
+        )
+
     content_type = item.get("content_type") or "application/octet-stream"
     if _is_image_type(content_type):
-        return render_template("uploads/file_view.html", item=item, mode="image", text_content=None, is_truncated=False)
+        return render_template(
+            "uploads/file_view.html",
+            item=item,
+            mode="image",
+            text_content=None,
+            is_truncated=False,
+            error_message=None,
+            read_object_url=read_object_url,
+        )
 
     if _is_text_type(content_type, item.get("original_file_name")):
         try:
-            body, _ = fetch_object_bytes(item.get("object_url") or "")
+            body, _ = fetch_object_bytes(item.get("object_name") or "")
             is_truncated = len(body) > _TEXT_PREVIEW_LIMIT
             preview_bytes = body[:_TEXT_PREVIEW_LIMIT]
             text_content = preview_bytes.decode("utf-8", errors="replace")
         except ValueError as exc:
-            return render_template("uploads/file_view.html", item=item, mode="error", text_content=None, is_truncated=False, error_message=str(exc))
+            return render_template(
+                "uploads/file_view.html",
+                item=item,
+                mode="error",
+                text_content=None,
+                is_truncated=False,
+                error_message=str(exc),
+                read_object_url=read_object_url,
+            )
 
         return render_template(
             "uploads/file_view.html",
@@ -206,9 +240,18 @@ def uploads_file_view(upload_id: int):
             text_content=text_content,
             is_truncated=is_truncated,
             error_message=None,
+            read_object_url=read_object_url,
         )
 
-    return render_template("uploads/file_view.html", item=item, mode="download", text_content=None, is_truncated=False)
+    return render_template(
+        "uploads/file_view.html",
+        item=item,
+        mode="download",
+        text_content=None,
+        is_truncated=False,
+        error_message=None,
+        read_object_url=read_object_url,
+    )
 
 
 @uploads_bp.get("/uploads/<int:upload_id>/file/content")
@@ -218,7 +261,7 @@ def uploads_file_content(upload_id: int):
         return render_template("shared/error.html"), 404
 
     try:
-        body, header_content_type = fetch_object_bytes(item.get("object_url") or "")
+        body, header_content_type = fetch_object_bytes(item.get("object_name") or "")
     except ValueError:
         return render_template("shared/error.html"), 502
 
@@ -233,7 +276,7 @@ def uploads_download(upload_id: int):
         return render_template("shared/error.html"), 404
 
     try:
-        body, header_content_type = fetch_object_bytes(item.get("object_url") or "")
+        body, header_content_type = fetch_object_bytes(item.get("object_name") or "")
     except ValueError:
         return render_template("shared/error.html"), 502
 
