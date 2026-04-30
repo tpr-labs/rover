@@ -1,0 +1,42 @@
+{% extends "shared/base.html" %}
+{% block title %}File View · {{ item.title }} · Uploads · Rover{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0 text-white">File View: {{ item.title }}</h1>
+  <div class="d-flex gap-2">
+    <a class="btn btn-secondary" href="{{ url_for('uploads.uploads_detail', upload_id=item.upload_id) }}"><i class="fa-solid fa-arrow-left me-1"></i>Back</a>
+    <a class="btn btn-secondary" href="{{ url_for('uploads.uploads_download', upload_id=item.upload_id) }}"><i class="fa-solid fa-download me-1"></i>Download</a>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <div class="small text-muted mb-3">
+      {{ item.original_file_name }} · {{ item.content_type or 'application/octet-stream' }}
+    </div>
+
+    {% if mode == 'image' %}
+      <div class="text-center">
+        <img
+          src="{{ url_for('uploads.uploads_file_content', upload_id=item.upload_id) }}"
+          alt="{{ item.original_file_name }}"
+          class="img-fluid rounded border"
+          style="max-height: 70vh;"
+        />
+      </div>
+    {% elif mode == 'text' %}
+      {% if is_truncated %}
+      <div class="alert alert-warning">Large file detected. Showing first {{ (512 * 1024) // 1024 }} KB only.</div>
+      {% endif %}
+      <pre class="p-3 rounded border" style="white-space: pre-wrap; word-break: break-word; background:#020617; color:#e2e8f0; max-height:70vh; overflow:auto;">{{ text_content }}</pre>
+    {% elif mode == 'error' %}
+      <div class="alert alert-danger">{{ error_message or 'Unable to load file preview.' }}</div>
+    {% else %}
+      <div class="alert alert-info mb-0">
+        Preview is not supported for this file type.
+        <a class="alert-link" href="{{ url_for('uploads.uploads_download', upload_id=item.upload_id) }}">Download the file</a> to view it locally.
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

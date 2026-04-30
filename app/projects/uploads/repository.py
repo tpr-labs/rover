@@ -187,6 +187,18 @@ def upload_file_to_oci(original_file_name: str, file_bytes: bytes, content_type:
     return object_name, put_url, len(file_bytes), headers["Content-Type"]
 
 
+def fetch_object_bytes(object_url: str) -> tuple[bytes, str | None]:
+    url = (object_url or "").strip()
+    if not url:
+        raise ValueError("Object URL is missing")
+
+    response = requests.get(url, timeout=(10, 120))
+    if response.status_code != 200:
+        raise ValueError(f"Failed to fetch object (status {response.status_code})")
+
+    return response.content or b"", response.headers.get("Content-Type")
+
+
 def delete_object_from_oci(object_name: str) -> None:
     if not is_upload_allowed():
         raise ValueError("OCI upload is disabled by toggle ALLOW_OCI_FILE_UPLOAD")

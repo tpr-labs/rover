@@ -14,12 +14,13 @@ DEFAULT_DASHBOARD_ORDER_BY_KEY = {
     "bookmarks": 1,
     "sb": 2,
     "ft": 3,
-    "dash_llm_space": 4,
-    "shortcuts": 5,
-    "toggles": 6,
-    "sql": 7,
-    "kv": 8,
-    "uploads": 9,
+    "ft_tracker": 4,
+    "dash_llm_space": 5,
+    "shortcuts": 6,
+    "toggles": 7,
+    "sql": 8,
+    "kv": 9,
+    "uploads": 10,
 }
 
 

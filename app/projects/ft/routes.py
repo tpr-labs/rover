@@ -121,6 +121,11 @@ def ft_spend_tracker():
     return render_template("ft/tracker.html", data=data)
 
 
+@ft_bp.get("/ft_tracker")
+def ft_spend_tracker_dashboard_alias():
+    return redirect(url_for("ft.ft_spend_tracker"))
+
+
 @ft_bp.post("/ft/transactions/raw-ajax")
 def ft_transactions_create_raw_ajax():
     if not is_valid_csrf(request.form.get("csrf_token")):
