@@ -95,6 +95,10 @@ def _parse_raw(raw_text: str) -> dict:
     }
 
 
+def _split_bulk_lines(raw_bulk_text: str) -> list[str]:
+    return [line.strip() for line in (raw_bulk_text or "").splitlines() if line.strip()]
+
+
 @ft_bp.get("/ft")
 def ft_dashboard():
     summary = get_finance_summary()
@@ -208,6 +212,59 @@ def ft_transactions_create_raw():
         return redirect(url_for("ft.ft_transactions_list", msg="raw_created"))
     except ValueError as exc:
         return redirect(url_for("ft.ft_transactions_list", err=str(exc)))
+
+
+@ft_bp.get("/ft/transactions/bulk")
+def ft_transactions_bulk_page():
+    return render_template(
+        "ft/transactions_bulk_form.html",
+        item={"raw_bulk_text": ""},
+        error_message=request.args.get("err"),
+        message=request.args.get("msg"),
+    )
+
+
+@ft_bp.post("/ft/transactions/bulk")
+def ft_transactions_bulk_submit():
+    if not is_valid_csrf(request.form.get("csrf_token")):
+        return render_template("shared/error.html"), 400
+
+    raw_bulk_text = request.form.get("raw_bulk_text") or ""
+    lines = _split_bulk_lines(raw_bulk_text)
+    if not lines:
+        return render_template(
+            "ft/transactions_bulk_form.html",
+            item={"raw_bulk_text": raw_bulk_text},
+            error_message="Please enter at least one transaction line.",
+            message=None,
+        ), 400
+
+    created = 0
+    failed = 0
+    failures: list[str] = []
+
+    for index, line in enumerate(lines, start=1):
+        try:
+            parsed = _parse_raw(line)
+            create_transaction(**parsed)
+            created += 1
+        except ValueError as exc:
+            failed += 1
+            failures.append(f"Line {index}: {exc}")
+
+    if failed == 0:
+        return redirect(url_for("ft.ft_transactions_list", msg=f"Bulk add complete: created {created} transaction(s)."))
+
+    err_preview = " | ".join(failures[:5])
+    if len(failures) > 5:
+        err_preview += f" | ...and {len(failures) - 5} more"
+    msg = f"Bulk add partial: created {created}, failed {failed}."
+    return render_template(
+        "ft/transactions_bulk_form.html",
+        item={"raw_bulk_text": raw_bulk_text},
+        error_message=err_preview,
+        message=msg,
+    ), 400
 
 
 @ft_bp.post("/ft/transactions/process-pending")
