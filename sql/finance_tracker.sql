@@ -23,6 +23,7 @@ CREATE TABLE ft_transactions (
     account_id         NUMBER NULL,
     status             VARCHAR2(20) DEFAULT 'PENDING' NOT NULL,
     direction          VARCHAR2(20) NOT NULL,
+    is_active          CHAR(1) DEFAULT 'Y' NOT NULL,
     llm_processed_at   TIMESTAMP NULL,
     created_at         TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL,
     updated_at         TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL,
@@ -30,7 +31,8 @@ CREATE TABLE ft_transactions (
         REFERENCES ft_accounts(account_id)
         ON DELETE SET NULL,
     CONSTRAINT chk_ft_transactions_status CHECK (status IN ('PENDING', 'PROCESSED', 'FAILED', 'MANUAL')),
-    CONSTRAINT chk_ft_transactions_direction CHECK (direction IN ('INCOME', 'EXPENSE'))
+    CONSTRAINT chk_ft_transactions_direction CHECK (direction IN ('INCOME', 'EXPENSE')),
+    CONSTRAINT chk_ft_transactions_active CHECK (is_active IN ('Y', 'N'))
 );
 
 CREATE TABLE ft_llm_calls (
@@ -59,6 +61,7 @@ CREATE INDEX idx_ft_transactions_status ON ft_transactions(status);
 CREATE INDEX idx_ft_transactions_date ON ft_transactions(tx_date);
 CREATE INDEX idx_ft_transactions_updated ON ft_transactions(updated_at);
 CREATE INDEX idx_ft_transactions_account ON ft_transactions(account_id);
+CREATE INDEX idx_ft_transactions_active ON ft_transactions(is_active);
 CREATE INDEX idx_ft_llm_calls_tx ON ft_llm_calls(transaction_id);
 CREATE INDEX idx_ft_llm_calls_hash ON ft_llm_calls(request_hash, model_name);
 

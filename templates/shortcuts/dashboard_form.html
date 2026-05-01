@@ -45,9 +45,15 @@
       </div>
 
       <div class="mb-3">
+        <label class="form-label">Quick Links (one per line)</label>
+        <textarea class="form-control" name="quick_links_text" rows="5" placeholder="Transactions | /ft/transactions&#10;Bulk Add | /ft/transactions/bulk">{{ quick_links_text if quick_links_text is defined else '' }}</textarea>
+        <div class="form-text text-muted">Format: <code>Label | /path</code>. Each path must stay inside this dashboard item's project path.</div>
+      </div>
+
+      <div class="mb-3">
         <label class="form-label">Additional Info JSON (optional advanced metadata)</label>
         <textarea class="form-control" name="additional_info" rows="4" placeholder="e.g. &#123;&quot;notes&quot;:&quot;optional metadata&quot;&#125;">{{ item.additional_info if item else '' }}</textarea>
-        <div class="form-text text-muted">Optional: keep extra metadata here. <code>icon</code> and <code>order</code> are controlled by dedicated fields above.</div>
+        <div class="form-text text-muted">Optional: keep extra metadata here. <code>icon</code>, <code>order</code>, and <code>quick_links</code> are controlled by dedicated fields above.</div>
       </div>
 
       {% if mode == 'edit' %}

@@ -30,6 +30,7 @@ class ParsedTransaction(BaseModel):
     category: str = Field(description="Category of transaction")
     description: str = Field(description="Human-readable transaction description")
     account_name: Optional[str] = Field(default=None, description="Best-matched account name or null")
+    is_active: Optional[str] = Field(default=None, description="Y or N if explicitly inferred, else null")
 
 
 class ParsedBatchItem(ParsedTransaction):
@@ -66,6 +67,7 @@ def update_transaction_details(
     category: str,
     description: str,
     account_name: str | None,
+    is_active: str | None,
 ) -> str:
     """Persist parsed transaction values to database."""
     account_id = repository.resolve_account_id_by_name(account_name)
@@ -77,6 +79,7 @@ def update_transaction_details(
         category=category,
         description=description,
         account_id=account_id,
+        is_active=is_active,
     )
     return "updated" if ok else "not_found"
 
@@ -92,6 +95,8 @@ def _build_prompt(raw_text: str, accounts: list[dict]) -> str:
             "3) if date missing use today's date.\n"
             "4) if category missing use 'uncategorized'.\n"
             "5) account_name should match one of available account names if possible, else null.\n"
+            "6) is_active should be Y/N when confidently inferred; else null.\n"
+            "7) Prefer account-type rule for is_active: CREDIT=>N, SAVINGS=>Y.\n"
             "Available accounts: {accounts}\n"
             "Today: {today}\n"
             "Raw text: {raw_text}\n"
@@ -115,7 +120,8 @@ def _build_batch_prompt(transactions: list[dict], accounts: list[dict]) -> str:
             "4) if date missing use today's date.\n"
             "5) if category missing use 'uncategorized'.\n"
             "6) account_name should match one of available account names if possible, else null.\n"
-            "7) Return one output row for each input row; do not skip any.\n"
+            "7) is_active should be Y/N when confidently inferred; else null. Prefer CREDIT=>N, SAVINGS=>Y based on matched account_name.\n"
+            "8) Return one output row for each input row; do not skip any.\n"
             "Available accounts: {accounts}\n"
             "Today: {today}\n"
             "Input transactions JSON: {transactions_json}\n"
@@ -141,6 +147,7 @@ def _persist_parsed(transaction_id: int, parsed: dict) -> None:
             "category": str(parsed.get("category") or "uncategorized"),
             "description": str(parsed.get("description") or ""),
             "account_name": parsed.get("account_name"),
+            "is_active": parsed.get("is_active"),
         }
     )
 
@@ -209,6 +216,7 @@ def _build_graph(llm_invoke):
                 "category": str(parsed.get("category") or "uncategorized"),
                 "description": str(parsed.get("description") or ""),
                 "account_name": parsed.get("account_name"),
+                "is_active": parsed.get("is_active"),
             }
         )
         return state

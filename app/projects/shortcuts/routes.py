@@ -37,7 +37,34 @@ def _parse_metadata(raw: str | None) -> dict:
     return payload
 
 
-def _build_dashboard_metadata(raw_json: str | None, icon_class: str | None, display_order: str | None) -> str:
+def _parse_quick_links_text(raw_text: str | None) -> list[dict]:
+    links: list[dict] = []
+    for idx, line in enumerate((raw_text or "").splitlines(), start=1):
+        text = line.strip()
+        if not text:
+            continue
+        if "|" not in text:
+            raise ValueError(f"Quick link line {idx} must use format: Label | /path")
+
+        label, path = text.split("|", 1)
+        label = label.strip()
+        path = path.strip()
+        if not label:
+            raise ValueError(f"Quick link line {idx} label is required")
+        if not path:
+            raise ValueError(f"Quick link line {idx} path is required")
+
+        links.append({"label": label, "path": path})
+    return links
+
+
+def _build_dashboard_metadata(
+    item_key: str,
+    raw_json: str | None,
+    icon_class: str | None,
+    display_order: str | None,
+    quick_links_text: str | None,
+) -> str:
     payload = _parse_metadata(raw_json)
 
     icon = (icon_class or "").strip()
@@ -58,21 +85,27 @@ def _build_dashboard_metadata(raw_json: str | None, icon_class: str | None, disp
     else:
         payload.pop("order", None)
 
+    quick_links = _parse_quick_links_text(quick_links_text)
+    if quick_links:
+        payload["quick_links"] = quick_links
+    else:
+        payload.pop("quick_links", None)
+
     return json.dumps(payload) if payload else ""
 
 
-def _extract_dashboard_form_fields(item: dict | None) -> tuple[str, str]:
+def _extract_dashboard_form_fields(item: dict | None) -> tuple[str, str, str]:
     if not item:
-        return "", ""
+        return "", "", ""
     raw = (item.get("additional_info") or "").strip()
     if not raw:
-        return "", ""
+        return "", "", ""
     try:
         payload = json.loads(raw)
     except (json.JSONDecodeError, TypeError, ValueError):
-        return "", ""
+        return "", "", ""
     if not isinstance(payload, dict):
-        return "", ""
+        return "", "", ""
 
     icon_class = str(payload.get("icon") or "").strip()
     order_value = payload.get("order")
@@ -82,7 +115,21 @@ def _extract_dashboard_form_fields(item: dict | None) -> tuple[str, str]:
         order_text = ""
     else:
         order_text = str(order_value).strip()
-    return icon_class, order_text
+
+    quick_links_lines: list[str] = []
+    raw_links = payload.get("quick_links")
+    if isinstance(raw_links, list):
+        for row in raw_links:
+            if not isinstance(row, dict):
+                continue
+            label = str(row.get("label") or "").strip()
+            path = str(row.get("path") or "").strip()
+            if not label or not path:
+                continue
+            quick_links_lines.append(f"{label} | {path}")
+    quick_links_text = "\n".join(quick_links_lines)
+
+    return icon_class, order_text, quick_links_text
 
 
 def _humanize_timestamp(value) -> str:
@@ -162,13 +209,22 @@ def dashboard_items_new_page():
         error_message=None,
         icon_class="",
         display_order="",
+        quick_links_text="",
     )
 
 
 @shortcuts_bp.post("/shortcuts/dashboard-items/new")
 def dashboard_items_new_submit():
     if not is_valid_csrf(request.form.get("csrf_token")):
-        return render_template("shortcuts/dashboard_form.html", mode="create", item=None, error_message="Session expired. Please try again."), 400
+        return render_template(
+            "shortcuts/dashboard_form.html",
+            mode="create",
+            item=None,
+            error_message="Session expired. Please try again.",
+            icon_class="",
+            display_order="",
+            quick_links_text="",
+        ), 400
 
     item = {
         "item_key": (request.form.get("item_key") or "").strip(),
@@ -176,9 +232,16 @@ def dashboard_items_new_submit():
         "additional_info": request.form.get("additional_info") or "",
         "icon_class": request.form.get("icon_class") or "",
         "display_order": request.form.get("display_order") or "",
+        "quick_links_text": request.form.get("quick_links_text") or "",
     }
     try:
-        metadata = _build_dashboard_metadata(item["additional_info"], item["icon_class"], item["display_order"])
+        metadata = _build_dashboard_metadata(
+            item_key=item["item_key"],
+            raw_json=item["additional_info"],
+            icon_class=item["icon_class"],
+            display_order=item["display_order"],
+            quick_links_text=item["quick_links_text"],
+        )
         create_dashboard_item(item["item_key"], item["item_value"], metadata)
         return redirect(url_for("shortcuts.dashboard_items_detail", item_key=item["item_key"], msg="created"))
     except ValueError as exc:
@@ -189,6 +252,7 @@ def dashboard_items_new_submit():
             error_message=str(exc),
             icon_class=item["icon_class"],
             display_order=item["display_order"],
+            quick_links_text=item["quick_links_text"],
         ), 400
 
 
@@ -205,7 +269,7 @@ def dashboard_items_edit_page(item_key: str):
     item = get_dashboard_item(item_key)
     if not item:
         return render_template("shared/error.html"), 404
-    icon_class, display_order = _extract_dashboard_form_fields(item)
+    icon_class, display_order, quick_links_text = _extract_dashboard_form_fields(item)
     return render_template(
         "shortcuts/dashboard_form.html",
         mode="edit",
@@ -213,6 +277,7 @@ def dashboard_items_edit_page(item_key: str):
         error_message=None,
         icon_class=icon_class,
         display_order=display_order,
+        quick_links_text=quick_links_text,
     )
 
 
@@ -227,10 +292,17 @@ def dashboard_items_edit_submit(item_key: str):
         "additional_info": request.form.get("additional_info") or "",
         "icon_class": request.form.get("icon_class") or "",
         "display_order": request.form.get("display_order") or "",
+        "quick_links_text": request.form.get("quick_links_text") or "",
         "is_active": request.form.get("is_active") or "Y",
     }
     try:
-        metadata = _build_dashboard_metadata(item["additional_info"], item["icon_class"], item["display_order"])
+        metadata = _build_dashboard_metadata(
+            item_key=item_key,
+            raw_json=item["additional_info"],
+            icon_class=item["icon_class"],
+            display_order=item["display_order"],
+            quick_links_text=item["quick_links_text"],
+        )
         ok = update_dashboard_item(item_key, item["item_value"], metadata, item["is_active"])
         if not ok:
             return render_template("shared/error.html"), 404
@@ -243,6 +315,7 @@ def dashboard_items_edit_submit(item_key: str):
             error_message=str(exc),
             icon_class=item["icon_class"],
             display_order=item["display_order"],
+            quick_links_text=item["quick_links_text"],
         ), 400
 
 

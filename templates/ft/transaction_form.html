@@ -30,6 +30,7 @@
     <div class="row g-3 mt-1">
       <div class="col-md-4"><label class="form-label">Category</label><input class="form-control" name="category" value="{{ item.category if item else '' }}" /></div>
       <div class="col-md-4"><label class="form-label">Account</label><select class="form-select" name="account_id"><option value="">-- none --</option>{% for a in accounts %}<option value="{{ a.account_id }}" {% if item and item.account_id==a.account_id %}selected{% endif %}>{{ a.account_name }} ({{ a.account_type }})</option>{% endfor %}</select></div>
+      <div class="col-md-4"><label class="form-label">Active</label><select class="form-select" name="is_active"><option value="AUTO" {% if not item or not item.is_active or item.is_active=='AUTO' %}selected{% endif %}>Auto (Savings=Yes, Credit=No)</option><option value="Y" {% if item and item.is_active=='Y' %}selected{% endif %}>Yes</option><option value="N" {% if item and item.is_active=='N' %}selected{% endif %}>No</option></select></div>
       <div class="col-md-12"><label class="form-label">Description</label><textarea class="form-control" name="description" rows="3">{{ item.description if item else '' }}</textarea></div>
     </div>
     <button class="btn btn-primary mt-3" type="submit"><i class="fa-solid fa-check me-1"></i>{% if mode == 'create' %}Create{% else %}Update{% endif %}</button>
