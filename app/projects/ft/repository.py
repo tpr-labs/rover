@@ -48,6 +48,50 @@ def _normalize_direction(direction: str) -> str:
     return d
 
 
+def _normalize_is_active(value: str | None, default: str = "Y") -> str:
+    active = (value or default).strip().upper()
+    if active not in {"Y", "N"}:
+        raise ValueError("Active must be Y or N")
+    return active
+
+
+def default_transaction_is_active_for_account(account_id: int | None, fallback: str = "Y") -> str:
+    if account_id is None:
+        return _normalize_is_active(None, default=fallback)
+
+    sql = """
+        SELECT account_type
+        FROM ft_accounts
+        WHERE account_id = :account_id
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, {"account_id": int(account_id)})
+            row = cur.fetchone()
+            if not row:
+                return _normalize_is_active(None, default=fallback)
+
+            account_type = _normalize_account_type(str(row[0] or ""))
+            if account_type == "CREDIT":
+                return "N"
+            return "Y"
+
+
+def _current_transaction_is_active(transaction_id: int) -> str:
+    sql = """
+        SELECT is_active
+        FROM ft_transactions
+        WHERE transaction_id = :transaction_id
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, {"transaction_id": int(transaction_id)})
+            row = cur.fetchone()
+            if not row:
+                return "Y"
+            return _normalize_is_active(row[0], default="Y")
+
+
 def _normalize_amount(amount: float | int | str, direction: str) -> float:
     try:
         val = float(amount)
@@ -358,13 +402,14 @@ def list_transactions(
     search: str | None,
     status: str | None,
     direction: str | None,
+    active_status: str | None,
     start_date: str | None,
     end_date: str | None,
     account_id: int | None,
     page: int,
     page_size: int,
     exclude_pending: bool = False,
-) -> tuple[list[dict], int, str, str]:
+) -> tuple[list[dict], int, str, str, str]:
     search = (search or "").strip().lower()
     status = (status or "all").strip().upper()
     direction = (direction or "all").strip().upper()
@@ -372,6 +417,9 @@ def list_transactions(
         status = "ALL"
     if direction not in {"ALL", "INCOME", "EXPENSE"}:
         direction = "ALL"
+    active_status = (active_status or "all").strip().upper()
+    if active_status not in {"ACTIVE", "INACTIVE", "ALL"}:
+        active_status = "ALL"
 
     page = max(1, page)
     page_size = max(1, min(page_size, 100))
@@ -390,6 +438,10 @@ def list_transactions(
     if direction != "ALL":
         where.append("t.direction = :direction")
         params["direction"] = direction
+    if active_status == "ACTIVE":
+        where.append("t.is_active = 'Y'")
+    elif active_status == "INACTIVE":
+        where.append("t.is_active = 'N'")
     if account_id is not None:
         where.append("t.account_id = :account_id")
         params["account_id"] = int(account_id)
@@ -411,6 +463,7 @@ def list_transactions(
     list_sql = f"""
         SELECT t.transaction_id, t.raw_text, t.amount, t.tx_date, t.category, t.description,
                t.status, t.direction, t.created_at, t.updated_at, a.account_name, a.account_type, t.account_id
+               ,t.is_active
         FROM ft_transactions t
         LEFT JOIN ft_accounts a ON a.account_id = t.account_id
         {where_sql}
@@ -441,19 +494,20 @@ def list_transactions(
                     "account_name": r[10],
                     "account_type": r[11],
                     "account_id": int(r[12]) if r[12] is not None else None,
+                    "is_active": r[13],
                 }
                 for r in cur.fetchall()
             ]
 
     total_pages = max(1, math.ceil(total / page_size))
-    return rows, total_pages, status, direction
+    return rows, total_pages, status, direction, active_status
 
 
 def get_transaction(transaction_id: int) -> dict | None:
     sql = """
         SELECT t.transaction_id, t.raw_text, t.amount, t.tx_date, t.category, t.description,
                t.status, t.direction, t.llm_processed_at, t.created_at, t.updated_at,
-               t.account_id, a.account_name, a.account_type
+               t.account_id, a.account_name, a.account_type, t.is_active
         FROM ft_transactions t
         LEFT JOIN ft_accounts a ON a.account_id = t.account_id
         WHERE t.transaction_id = :transaction_id
@@ -479,6 +533,7 @@ def get_transaction(transaction_id: int) -> dict | None:
                 "account_id": int(row[11]) if row[11] is not None else None,
                 "account_name": row[12],
                 "account_type": row[13],
+                "is_active": row[14],
             }
 
 
@@ -491,6 +546,7 @@ def create_transaction(
     description: str | None,
     account_id: int | None,
     status: str = "PENDING",
+    is_active: str | None = None,
 ) -> int:
     d = _normalize_direction(direction)
     amt = _normalize_amount(amount, d)
@@ -501,10 +557,12 @@ def create_transaction(
     st = (status or "PENDING").strip().upper()
     if st not in {"PENDING", "PROCESSED", "FAILED", "MANUAL"}:
         raise ValueError("Invalid status")
+    active_default = default_transaction_is_active_for_account(account_id, fallback="Y")
+    active = _normalize_is_active(is_active, default=active_default)
 
     sql = """
-        INSERT INTO ft_transactions (raw_text, amount, tx_date, category, description, account_id, status, direction)
-        VALUES (:raw_text, :amount, :tx_date, :category, :description, :account_id, :status, :direction)
+        INSERT INTO ft_transactions (raw_text, amount, tx_date, category, description, account_id, status, direction, is_active)
+        VALUES (:raw_text, :amount, :tx_date, :category, :description, :account_id, :status, :direction, :is_active)
         RETURNING transaction_id INTO :transaction_id
     """
     with get_db_connection() as conn:
@@ -521,6 +579,7 @@ def create_transaction(
                     "account_id": account_id,
                     "status": st,
                     "direction": d,
+                    "is_active": active,
                     "transaction_id": out_id,
                 },
             )
@@ -538,6 +597,7 @@ def update_transaction(
     description: str | None,
     account_id: int | None,
     status: str,
+    is_active: str,
 ) -> bool:
     d = _normalize_direction(direction)
     amt = _normalize_amount(amount, d)
@@ -548,6 +608,7 @@ def update_transaction(
     st = (status or "PENDING").strip().upper()
     if st not in {"PENDING", "PROCESSED", "FAILED", "MANUAL"}:
         raise ValueError("Invalid status")
+    active = _normalize_is_active(is_active)
 
     sql = """
         UPDATE ft_transactions
@@ -558,7 +619,8 @@ def update_transaction(
             description = :description,
             account_id = :account_id,
             status = :status,
-            direction = :direction
+            direction = :direction,
+            is_active = :is_active
         WHERE transaction_id = :transaction_id
     """
     with get_db_connection() as conn:
@@ -575,6 +637,7 @@ def update_transaction(
                     "account_id": account_id,
                     "status": st,
                     "direction": d,
+                    "is_active": active,
                 },
             )
             conn.commit()
@@ -589,12 +652,19 @@ def update_transaction_from_llm(
     category: str,
     description: str,
     account_id: int | None,
+    is_active: str | None = None,
 ) -> bool:
     d = _normalize_direction(direction)
     amt = _normalize_amount(amount, d)
     txd = _normalize_date(tx_date)
     cat = (category or "").strip() or "uncategorized"
     desc = (description or "").strip() or None
+    if (is_active or "").strip():
+        active = _normalize_is_active(is_active)
+    elif account_id is not None:
+        active = default_transaction_is_active_for_account(account_id, fallback="Y")
+    else:
+        active = _current_transaction_is_active(transaction_id)
 
     sql = """
         UPDATE ft_transactions
@@ -604,6 +674,7 @@ def update_transaction_from_llm(
             category = :category,
             description = :description,
             account_id = :account_id,
+            is_active = :is_active,
             status = 'PROCESSED',
             llm_processed_at = SYSTIMESTAMP
         WHERE transaction_id = :transaction_id
@@ -620,6 +691,7 @@ def update_transaction_from_llm(
                     "category": cat,
                     "description": desc,
                     "account_id": account_id,
+                    "is_active": active,
                 },
             )
             conn.commit()
@@ -646,6 +718,37 @@ def mark_transaction_pending(transaction_id: int) -> bool:
             cur.execute(sql, {"transaction_id": transaction_id})
             conn.commit()
             return cur.rowcount > 0
+
+
+def toggle_transaction_active(transaction_id: int) -> dict | None:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT is_active
+                FROM ft_transactions
+                WHERE transaction_id = :transaction_id
+                """,
+                {"transaction_id": transaction_id},
+            )
+            row = cur.fetchone()
+            if not row:
+                return None
+
+            current = (row[0] or "Y").strip().upper()
+            next_value = "N" if current == "Y" else "Y"
+
+            cur.execute(
+                """
+                UPDATE ft_transactions
+                SET is_active = :is_active
+                WHERE transaction_id = :transaction_id
+                """,
+                {"transaction_id": transaction_id, "is_active": next_value},
+            )
+            conn.commit()
+
+            return {"transaction_id": int(transaction_id), "is_active": next_value}
 
 
 def delete_transaction(transaction_id: int) -> bool:
@@ -695,12 +798,14 @@ def get_finance_summary() -> dict:
             NVL(SUM(CASE WHEN amount < 0 AND TRUNC(tx_date) = TRUNC(SYSDATE) THEN ABS(amount) ELSE 0 END), 0) AS today_spend,
             NVL(SUM(CASE WHEN amount < 0 AND TRUNC(tx_date, 'MM') = TRUNC(SYSDATE, 'MM') THEN ABS(amount) ELSE 0 END), 0) AS month_spend
         FROM ft_transactions
+        WHERE is_active = 'Y'
     """
     recent_sql = """
         SELECT t.transaction_id, t.tx_date, t.amount, t.category, t.description, t.status, t.direction,
                a.account_name
         FROM ft_transactions t
         LEFT JOIN ft_accounts a ON a.account_id = t.account_id
+        WHERE t.is_active = 'Y'
         ORDER BY t.tx_date DESC, t.updated_at DESC, t.transaction_id DESC
         FETCH FIRST 10 ROWS ONLY
     """
@@ -751,6 +856,7 @@ def get_spend_tracker_data() -> dict:
             NVL(SUM(CASE WHEN amount < 0 AND tx_date >= TRUNC(SYSDATE) - 6 THEN ABS(amount) ELSE 0 END), 0) AS last7_spend,
             NVL(SUM(CASE WHEN amount < 0 AND TRUNC(tx_date, 'MM') = TRUNC(SYSDATE, 'MM') THEN ABS(amount) ELSE 0 END), 0) AS month_spend
         FROM ft_transactions
+        WHERE is_active = 'Y'
     """
 
     last7_daily_sql = """
@@ -758,6 +864,7 @@ def get_spend_tracker_data() -> dict:
                NVL(SUM(ABS(amount)), 0) AS spend
         FROM ft_transactions
         WHERE amount < 0
+          AND is_active = 'Y'
           AND tx_date >= TRUNC(SYSDATE) - 6
         GROUP BY TO_CHAR(tx_date, 'YYYY-MM-DD')
         ORDER BY day_key
@@ -768,6 +875,7 @@ def get_spend_tracker_data() -> dict:
                NVL(SUM(ABS(amount)), 0) AS spend
         FROM ft_transactions
         WHERE amount < 0
+          AND is_active = 'Y'
         GROUP BY NVL(NULLIF(TRIM(category), ''), 'uncategorized')
         ORDER BY spend DESC
         FETCH FIRST 12 ROWS ONLY
@@ -779,6 +887,7 @@ def get_spend_tracker_data() -> dict:
         FROM ft_transactions t
         LEFT JOIN ft_accounts a ON a.account_id = t.account_id
         WHERE t.amount < 0
+          AND t.is_active = 'Y'
         GROUP BY NVL(a.account_name, 'Unassigned')
         ORDER BY spend DESC
         FETCH FIRST 12 ROWS ONLY
@@ -789,6 +898,7 @@ def get_spend_tracker_data() -> dict:
                NVL(SUM(ABS(amount)), 0) AS spend
         FROM ft_transactions
         WHERE amount < 0
+          AND is_active = 'Y'
           AND TRUNC(tx_date, 'MM') = TRUNC(SYSDATE, 'MM')
         GROUP BY TO_CHAR(tx_date, 'DD')
         ORDER BY day_of_month
@@ -801,6 +911,7 @@ def get_spend_tracker_data() -> dict:
         FROM ft_transactions t
         LEFT JOIN ft_accounts a ON a.account_id = t.account_id
         WHERE t.amount < 0
+          AND t.is_active = 'Y'
           AND t.tx_date >= TRUNC(SYSDATE) - 6
         GROUP BY TO_CHAR(t.tx_date, 'YYYY-MM-DD'), NVL(a.account_name, 'Unassigned')
         ORDER BY day_key, account_name
@@ -813,6 +924,7 @@ def get_spend_tracker_data() -> dict:
         FROM ft_transactions t
         LEFT JOIN ft_accounts a ON a.account_id = t.account_id
         WHERE t.amount < 0
+          AND t.is_active = 'Y'
           AND TRUNC(t.tx_date, 'MM') = TRUNC(SYSDATE, 'MM')
         GROUP BY TO_CHAR(t.tx_date, 'DD'), NVL(a.account_name, 'Unassigned')
         ORDER BY day_of_month, account_name

@@ -8,6 +8,7 @@ from . import llm
 from .repository import (
     create_account,
     create_transaction,
+    default_transaction_is_active_for_account,
     delete_account,
     delete_transaction,
     get_account,
@@ -20,6 +21,7 @@ from .repository import (
     list_transactions,
     mark_transaction_pending,
     resolve_account_id_by_name,
+    toggle_transaction_active,
     update_account,
     update_transaction,
 )
@@ -82,6 +84,13 @@ def _parse_raw(raw_text: str) -> dict:
             first = re.sub(r"[^A-Za-z]", "", tokens[0]).lower()
             category = first or "uncategorized"
 
+    default_is_active = default_transaction_is_active_for_account(account_id, fallback="Y")
+    if "not active" in lower or "inactive" in lower:
+        is_active = "N"
+    elif " active" in lower:
+        is_active = "Y"
+    else:
+        is_active = default_is_active
     description = text
     return {
         "raw_text": text,
@@ -92,6 +101,7 @@ def _parse_raw(raw_text: str) -> dict:
         "description": description,
         "account_id": account_id,
         "status": "PENDING",
+        "is_active": is_active,
     }
 
 
@@ -102,10 +112,11 @@ def _split_bulk_lines(raw_bulk_text: str) -> list[str]:
 @ft_bp.get("/ft")
 def ft_dashboard():
     summary = get_finance_summary()
-    pending_items, _, _, _ = list_transactions(
+    pending_items, _, _, _, _ = list_transactions(
         search="",
         status="PENDING",
         direction="ALL",
+        active_status="ALL",
         start_date="",
         end_date="",
         account_id=None,
@@ -149,15 +160,17 @@ def ft_transactions_list():
     search = request.args.get("q", "")
     status = request.args.get("status", "all")
     direction = request.args.get("direction", "all")
+    active_status = request.args.get("active_status", "all")
     account_id_raw = (request.args.get("account_id") or "").strip()
     account_id = int(account_id_raw) if account_id_raw.isdigit() else None
     start_date = (request.args.get("start_date") or "").strip()
     end_date = (request.args.get("end_date") or "").strip()
     page = max(1, int(request.args.get("page", "1")))
-    items, total_pages, status, direction = list_transactions(
+    items, total_pages, status, direction, active_status = list_transactions(
         search,
         status,
         direction,
+        active_status,
         start_date,
         end_date,
         account_id,
@@ -165,10 +178,11 @@ def ft_transactions_list():
         20,
         exclude_pending=True,
     )
-    unprocessed_items, _, _, _ = list_transactions(
+    unprocessed_items, _, _, _, _ = list_transactions(
         search,
         "PENDING",
         direction,
+        active_status,
         start_date,
         end_date,
         account_id,
@@ -189,6 +203,7 @@ def ft_transactions_list():
         search=search,
         status=status,
         direction=direction,
+        active_status=active_status,
         accounts_filter=accounts_filter,
         selected_account_id=account_id_raw,
         start_date=start_date,
@@ -290,6 +305,18 @@ def ft_transaction_mark_pending(transaction_id: int):
     return redirect(url_for("ft.ft_transactions_list", msg="marked_pending"))
 
 
+@ft_bp.post("/ft/transactions/<int:transaction_id>/toggle-active")
+def ft_transaction_toggle_active(transaction_id: int):
+    if not is_valid_csrf(request.form.get("csrf_token")):
+        return jsonify({"ok": False, "error": "Invalid CSRF token"}), 400
+
+    result = toggle_transaction_active(transaction_id)
+    if not result:
+        return jsonify({"ok": False, "error": "Transaction not found"}), 404
+
+    return jsonify({"ok": True, "transaction_id": result["transaction_id"], "is_active": result["is_active"]})
+
+
 @ft_bp.get("/ft/transactions/new")
 def ft_transactions_new_page():
     return render_template("ft/transaction_form.html", mode="create", item=None, accounts=list_accounts(active_only=True), error_message=None)
@@ -309,8 +336,11 @@ def ft_transactions_new_submit():
         "description": request.form.get("description") or "",
         "account_id": request.form.get("account_id") or "",
         "status": (request.form.get("status") or "MANUAL").upper(),
+        "is_active": (request.form.get("is_active") or "AUTO").upper(),
     }
     account_id = int(item["account_id"]) if str(item["account_id"]).strip().isdigit() else None
+
+    is_active_value = None if item["is_active"] in {"", "AUTO"} else item["is_active"]
 
     try:
         tx_id = create_transaction(
@@ -322,6 +352,7 @@ def ft_transactions_new_submit():
             description=item["description"],
             account_id=account_id,
             status=item["status"],
+            is_active=is_active_value,
         )
         return redirect(url_for("ft.ft_transaction_detail", transaction_id=tx_id, msg="created"))
     except ValueError as exc:
@@ -366,8 +397,11 @@ def ft_transaction_edit_submit(transaction_id: int):
         "description": request.form.get("description") or "",
         "account_id": request.form.get("account_id") or "",
         "status": (request.form.get("status") or "MANUAL").upper(),
+        "is_active": (request.form.get("is_active") or "AUTO").upper(),
     }
     account_id = int(form_item["account_id"]) if str(form_item["account_id"]).strip().isdigit() else None
+
+    is_active_value = None if form_item["is_active"] in {"", "AUTO"} else form_item["is_active"]
 
     try:
         ok = update_transaction(
@@ -380,6 +414,7 @@ def ft_transaction_edit_submit(transaction_id: int):
             description=form_item["description"],
             account_id=account_id,
             status=form_item["status"],
+            is_active=is_active_value or default_transaction_is_active_for_account(account_id, fallback="Y"),
         )
         if not ok:
             return render_template("shared/error.html"), 404

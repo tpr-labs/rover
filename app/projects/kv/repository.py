@@ -297,6 +297,7 @@ def list_dashboard_projects() -> list[dict]:
         icon_class = default_icon
         order_value: int | None = None
         metadata_raw = (additional_info or "").strip()
+        quick_links: list[dict] = []
         if metadata_raw:
             try:
                 metadata = json.loads(metadata_raw)
@@ -311,6 +312,17 @@ def list_dashboard_projects() -> list[dict]:
                             order_value = int(raw_order)
                         except (TypeError, ValueError):
                             order_value = None
+
+                    raw_links = metadata.get("quick_links")
+                    if isinstance(raw_links, list):
+                        for row in raw_links:
+                            if not isinstance(row, dict):
+                                continue
+                            label = str(row.get("label") or "").strip()
+                            path = str(row.get("path") or "").strip()
+                            if not label or not path:
+                                continue
+                            quick_links.append({"label": label[:80], "path": path})
             except (json.JSONDecodeError, TypeError, ValueError):
                 icon_class = default_icon
 
@@ -324,6 +336,7 @@ def list_dashboard_projects() -> list[dict]:
                 "path": f"/{slug}",
                 "icon_class": icon_class,
                 "order": order_value,
+                "quick_links": quick_links,
             }
         )
     projects.sort(key=lambda p: (int(p.get("order", 9999)), str(p.get("title", "")).lower()))

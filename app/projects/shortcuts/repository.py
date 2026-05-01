@@ -91,6 +91,49 @@ def validate_dashboard_item_input(item_key: str, item_value: str, additional_inf
                     raise ValueError("Order must be a positive integer")
                 if order < 1:
                     raise ValueError("Order must be at least 1")
+
+            if isinstance(payload, dict) and payload.get("quick_links") is not None:
+                quick_links = payload.get("quick_links")
+                if not isinstance(quick_links, list):
+                    raise ValueError("quick_links must be a JSON array")
+
+                base_path = f"/{(item_key or '').strip().lower()}"
+                if not base_path or base_path == "/":
+                    raise ValueError("Dashboard key is invalid for quick-link validation")
+
+                for idx, row in enumerate(quick_links, start=1):
+                    if not isinstance(row, dict):
+                        raise ValueError(f"quick_links[{idx}] must be an object")
+
+                    label = str(row.get("label") or "").strip()
+                    path = str(row.get("path") or "").strip()
+                    if not label:
+                        raise ValueError(f"quick_links[{idx}] label is required")
+                    if len(label) > 80:
+                        raise ValueError(f"quick_links[{idx}] label must be at most 80 chars")
+                    if not path:
+                        raise ValueError(f"quick_links[{idx}] path is required")
+                    if len(path) > 4000:
+                        raise ValueError(f"quick_links[{idx}] path must be at most 4000 chars")
+                    if not path.startswith("/"):
+                        raise ValueError(f"quick_links[{idx}] path must start with /")
+                    if path.startswith("//"):
+                        raise ValueError(f"quick_links[{idx}] path cannot start with //")
+                    if path.lower().startswith("http://") or path.lower().startswith("https://"):
+                        raise ValueError(f"quick_links[{idx}] external URLs are not allowed")
+                    if " " in path:
+                        raise ValueError(f"quick_links[{idx}] path cannot contain spaces")
+
+                    same_project_ok = (
+                        path == base_path
+                        or path.startswith(base_path + "/")
+                        or path.startswith(base_path + "?")
+                        or path.startswith(base_path + "#")
+                    )
+                    if not same_project_ok:
+                        raise ValueError(
+                            f"quick_links[{idx}] must stay inside project '{base_path}'"
+                        )
         except json.JSONDecodeError:
             raise ValueError("Additional info must be valid JSON")
 

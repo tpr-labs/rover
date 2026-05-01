@@ -23,7 +23,8 @@
     <p class="small text-muted mb-3">
       Example lines:<br>
       <code>income 55000 from salary account for april</code><br>
-      <code>groceries 1240 from hdfc account 2026-04-28</code>
+      <code>groceries 1240 from hdfc account 2026-04-28</code><br>
+      <code>groceries 1240 from hdfc account not active</code>
     </p>
 
     <form method="post" action="{{ url_for('ft.ft_transactions_bulk_submit') }}">

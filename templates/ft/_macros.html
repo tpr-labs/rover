@@ -12,6 +12,11 @@
   <span>{{ item.tx_date_human }}</span>
   <span>•</span>
   <span class="badge rv-badge rv-badge-neutral">{{ item.category or 'uncategorized' }}</span>
+  {% if item.is_active == 'Y' %}
+    <span class="badge rv-badge rv-badge-info js-tx-active-badge">ACTIVE</span>
+  {% else %}
+    <span class="badge rv-badge rv-badge-neutral js-tx-active-badge">INACTIVE</span>
+  {% endif %}
   {% if pending_badge or item.status == 'PENDING' %}
     <span class="badge rv-badge rv-badge-pending">PENDING</span>
   {% endif %}
@@ -21,6 +26,17 @@
 {% macro tx_actions(item, csrf_token, allow_mark_pending=True, allow_delete=True) -%}
 <div class="btn-group btn-group-sm border border-secondary rounded" role="group" aria-label="Row actions">
   <a class="btn btn-secondary" href="{{ url_for('ft.ft_transaction_detail', transaction_id=item.transaction_id) }}" title="View"><i class="fa-solid fa-eye"></i></a>
+  <a class="btn btn-secondary" href="{{ url_for('ft.ft_transaction_edit_page', transaction_id=item.transaction_id) }}" title="Edit"><i class="fa-regular fa-pen-to-square"></i></a>
+  <button
+    type="button"
+    class="btn btn-secondary js-ft-toggle-active"
+    title="Toggle Active"
+    data-url="{{ url_for('ft.ft_transaction_toggle_active', transaction_id=item.transaction_id) }}"
+    data-transaction-id="{{ item.transaction_id }}"
+    data-is-active="{{ item.is_active or 'Y' }}"
+  >
+    <i class="fa-solid {% if (item.is_active or 'Y') == 'Y' %}fa-toggle-on text-success{% else %}fa-toggle-off text-secondary{% endif %}"></i>
+  </button>
   {% if allow_mark_pending and item.status != 'PENDING' %}
   <form method="post" action="{{ url_for('ft.ft_transaction_mark_pending', transaction_id=item.transaction_id) }}" class="d-inline">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />

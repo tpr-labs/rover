@@ -8,6 +8,31 @@
     color: #9ec3ff;
     margin-bottom: .65rem;
   }
+  .project-title-link {
+    color: #e2e8f0;
+    text-decoration: none;
+  }
+  .project-title-link:hover {
+    color: #ffffff;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .project-quick-link {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .82rem;
+    padding: .2rem .55rem;
+    border: 1px solid #334155;
+    border-radius: 999px;
+    color: #cbd5e1;
+    text-decoration: none;
+  }
+  .project-quick-link:hover {
+    color: #ffffff;
+    border-color: #475569;
+    background: rgba(51, 65, 85, .28);
+  }
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -18,15 +43,23 @@
 <div class="row g-3">
   {% for p in projects %}
   <div class="col-12 col-md-6 col-lg-4">
-    <a href="{{ p.path }}" class="text-decoration-none">
-      <div class="card h-100 shadow-sm" style="background:#0f172a; border-color:#1e293b !important;">
-        <div class="card-body d-flex flex-column">
-          <div class="project-card-icon"><i class="{{ p.icon_class or 'fa-solid fa-grid-2' }}"></i></div>
-          <h3 class="h6 mb-1 text-light">{{ p.title }}</h3>
-          <div class="mt-auto small text-primary">Open project →</div>
+    <div class="card h-100 shadow-sm" style="background:#0f172a; border-color:#1e293b !important;">
+      <div class="card-body d-flex flex-column">
+        <div class="project-card-icon"><i class="{{ p.icon_class or 'fa-solid fa-grid-2' }}"></i></div>
+        <h3 class="h6 mb-2"><a href="{{ p.path }}" class="project-title-link">{{ p.title }}</a></h3>
+
+        {% if p.quick_links %}
+        <div class="d-flex flex-wrap gap-2 mt-auto">
+          {% for q in p.quick_links %}
+          <a href="{{ q.path }}" class="project-quick-link">
+            <i class="fa-solid fa-link"></i>
+            <span>{{ q.label }}</span>
+          </a>
+          {% endfor %}
         </div>
+        {% endif %}
       </div>
-    </a>
+    </div>
   </div>
   {% else %}
   <div class="col-12">

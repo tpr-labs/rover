@@ -46,6 +46,7 @@
     or (selected_account_id and selected_account_id|trim)
     or (start_date and start_date|trim)
     or (end_date and end_date|trim)
+    or active_status != 'ALL'
     or status != 'ALL'
     or direction != 'ALL'
   ) %}
@@ -65,6 +66,11 @@
       <option value="PROCESSED" {% if status=='PROCESSED' %}selected{% endif %}>Processed</option>
       <option value="FAILED" {% if status=='FAILED' %}selected{% endif %}>Failed</option>
       <option value="MANUAL" {% if status=='MANUAL' %}selected{% endif %}>Manual</option>
+    </select></div>
+    <div class="col-md-2"><select class="form-select" name="active_status">
+      <option value="ACTIVE" {% if active_status=='ACTIVE' %}selected{% endif %}>Active only</option>
+      <option value="INACTIVE" {% if active_status=='INACTIVE' %}selected{% endif %}>Inactive only</option>
+      <option value="ALL" {% if active_status=='ALL' %}selected{% endif %}>All active state</option>
     </select></div>
     <div class="col-md-2"><select class="form-select" name="direction">
       <option value="ALL" {% if direction=='ALL' %}selected{% endif %}>All direction</option>
@@ -134,8 +140,62 @@
 <div class="d-flex justify-content-between align-items-center mt-3">
   <span class="text-muted">Page {{ page }} of {{ total_pages }}</span>
   <div class="d-flex gap-2">
-    {% if page > 1 %}<a class="btn btn-sm btn-secondary" href="{{ url_for('ft.ft_transactions_list', q=search, status=status, direction=direction, account_id=selected_account_id, start_date=start_date, end_date=end_date, page=page-1) }}">Previous</a>{% endif %}
-    {% if page < total_pages %}<a class="btn btn-sm btn-secondary" href="{{ url_for('ft.ft_transactions_list', q=search, status=status, direction=direction, account_id=selected_account_id, start_date=start_date, end_date=end_date, page=page+1) }}">Next</a>{% endif %}
+    {% if page > 1 %}<a class="btn btn-sm btn-secondary" href="{{ url_for('ft.ft_transactions_list', q=search, status=status, active_status=active_status, direction=direction, account_id=selected_account_id, start_date=start_date, end_date=end_date, page=page-1) }}">Previous</a>{% endif %}
+    {% if page < total_pages %}<a class="btn btn-sm btn-secondary" href="{{ url_for('ft.ft_transactions_list', q=search, status=status, active_status=active_status, direction=direction, account_id=selected_account_id, start_date=start_date, end_date=end_date, page=page+1) }}">Next</a>{% endif %}
   </div>
 </div>
+
+<script>
+  (function () {
+    const buttons = document.querySelectorAll('.js-ft-toggle-active');
+    if (!buttons.length) return;
+
+    for (const btn of buttons) {
+      btn.addEventListener('click', async function () {
+        const url = btn.dataset.url;
+        const fd = new FormData();
+        fd.set('csrf_token', '{{ csrf_token }}');
+        btn.disabled = true;
+        try {
+          const res = await fetch(url, {
+            method: 'POST',
+            body: fd,
+            credentials: 'same-origin'
+          });
+          const data = await res.json();
+          if (!res.ok || !data.ok) {
+            throw new Error(data.error || 'Failed to toggle active status');
+          }
+
+          const nextIsActive = (data.is_active || '').toUpperCase() === 'Y';
+          btn.dataset.isActive = nextIsActive ? 'Y' : 'N';
+
+          const icon = btn.querySelector('i');
+          if (icon) {
+            icon.classList.remove('fa-toggle-on', 'fa-toggle-off', 'text-success', 'text-secondary');
+            if (nextIsActive) {
+              icon.classList.add('fa-toggle-on', 'text-success');
+            } else {
+              icon.classList.add('fa-toggle-off', 'text-secondary');
+            }
+          }
+
+          const row = btn.closest('tr');
+          if (row) {
+            const badge = row.querySelector('.js-tx-active-badge');
+            if (badge) {
+              badge.textContent = nextIsActive ? 'ACTIVE' : 'INACTIVE';
+              badge.classList.remove('rv-badge-info', 'rv-badge-neutral');
+              badge.classList.add(nextIsActive ? 'rv-badge-info' : 'rv-badge-neutral');
+            }
+          }
+        } catch (err) {
+          alert(err.message || 'Failed to toggle active status');
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    }
+  })();
+</script>
 {% endblock %}
