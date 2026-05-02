@@ -1,0 +1,109 @@
+{% extends "shared/base.html" %}
+{% block title %}Message #{{ item.message_id }} · Messenger · Rover{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0 text-white">Message #{{ item.message_id }}</h1>
+  <div class="d-flex gap-2">
+    <a class="btn btn-secondary" href="{{ url_for('messenger.messenger_list') }}"><i class="fa-solid fa-arrow-left me-1"></i>Back</a>
+    <form method="post" action="{{ url_for('messenger.messenger_resend', message_id=item.message_id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <button class="btn btn-secondary" type="submit"><i class="fa-solid fa-rotate-right me-1"></i>Resend</button>
+    </form>
+  </div>
+</div>
+
+{% if message == 'sent' %}
+<div class="alert alert-success">Message sent successfully.</div>
+{% elif message == 'failed' %}
+<div class="alert alert-warning">Message send failed. Details below.</div>
+{% elif message == 'resent' %}
+<div class="alert alert-success">Message resent successfully.</div>
+{% elif message == 'resend_failed' %}
+<div class="alert alert-warning">Resend failed. See error details below.</div>
+{% elif message == 'unhidden' %}
+<div class="alert alert-success">Message restored to visible list.</div>
+{% elif message %}
+<div class="alert alert-info">{{ message }}</div>
+{% endif %}
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <dl class="row mb-0">
+      <dt class="col-sm-3">Status</dt>
+      <dd class="col-sm-9">
+        {% if item.status == 'SENT' %}
+        <span class="badge rv-badge rv-badge-active">SENT</span>
+        {% else %}
+        <span class="badge rv-badge rv-badge-danger">FAILED</span>
+        {% endif %}
+      </dd>
+
+      <dt class="col-sm-3">Telegram Chat ID</dt>
+      <dd class="col-sm-9">{{ item.telegram_chat_id or '-' }}</dd>
+
+      <dt class="col-sm-3">Telegram Message ID</dt>
+      <dd class="col-sm-9">{{ item.telegram_message_id or '-' }}</dd>
+
+      <dt class="col-sm-3">HTTP Status</dt>
+      <dd class="col-sm-9">{{ item.http_status if item.http_status is not none else '-' }}</dd>
+
+      <dt class="col-sm-3">Hidden</dt>
+      <dd class="col-sm-9">{{ 'Yes' if item.is_hidden == 'Y' else 'No' }}</dd>
+
+      <dt class="col-sm-3">Resend Of</dt>
+      <dd class="col-sm-9">
+        {% if item.resend_of_message_id %}
+        <a href="{{ url_for('messenger.messenger_detail', message_id=item.resend_of_message_id) }}">#{{ item.resend_of_message_id }}</a>
+        {% else %}
+        -
+        {% endif %}
+      </dd>
+
+      <dt class="col-sm-3">Created</dt>
+      <dd class="col-sm-9">{{ item.created_at_human }}</dd>
+
+      <dt class="col-sm-3">Updated</dt>
+      <dd class="col-sm-9">{{ item.updated_at_human }}</dd>
+    </dl>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-header fw-semibold">Message Text</div>
+  <div class="card-body">
+    <pre class="mb-0" style="white-space: pre-wrap; font-family: inherit;">{{ item.message_text }}</pre>
+  </div>
+</div>
+
+{% if item.error_message %}
+<div class="card shadow-sm mb-3 border-danger-subtle">
+  <div class="card-header fw-semibold text-danger-emphasis">Error</div>
+  <div class="card-body">
+    <pre class="mb-0" style="white-space: pre-wrap; font-family: inherit;">{{ item.error_message }}</pre>
+  </div>
+</div>
+{% endif %}
+
+{% if item.response_payload %}
+<div class="card shadow-sm mb-3">
+  <div class="card-header fw-semibold">Telegram Response Payload</div>
+  <div class="card-body">
+    <pre class="mb-0" style="white-space: pre-wrap;">{{ item.response_payload }}</pre>
+  </div>
+</div>
+{% endif %}
+
+<div class="d-flex gap-2">
+  {% if item.is_hidden == 'Y' %}
+  <form method="post" action="{{ url_for('messenger.messenger_unhide', message_id=item.message_id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <button class="btn btn-secondary" type="submit">Unhide</button>
+  </form>
+  {% else %}
+  <form method="post" action="{{ url_for('messenger.messenger_hide', message_id=item.message_id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <button class="btn btn-secondary" type="submit">Hide</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

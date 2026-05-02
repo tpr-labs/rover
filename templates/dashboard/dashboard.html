@@ -33,6 +33,26 @@
     border-color: #475569;
     background: rgba(51, 65, 85, .28);
   }
+  .project-card {
+    position: relative;
+  }
+  .project-card-body {
+    position: relative;
+  }
+  .project-card-overlay-link {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+  }
+  .project-card-content {
+    position: relative;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .project-quick-link {
+    pointer-events: auto;
+  }
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -43,13 +63,16 @@
 <div class="row g-3">
   {% for p in projects %}
   <div class="col-12 col-md-6 col-lg-4">
-    <div class="card h-100 shadow-sm" style="background:#0f172a; border-color:#1e293b !important;">
-      <div class="card-body d-flex flex-column">
-        <div class="project-card-icon"><i class="{{ p.icon_class or 'fa-solid fa-grid-2' }}"></i></div>
-        <h3 class="h6 mb-2"><a href="{{ p.path }}" class="project-title-link">{{ p.title }}</a></h3>
+    <div class="card h-100 shadow-sm project-card" style="background:#0f172a; border-color:#1e293b !important;">
+      <div class="card-body d-flex flex-column project-card-body">
+        <a href="{{ p.path }}" class="project-card-overlay-link" aria-label="Open {{ p.title }}"></a>
+        <div class="project-card-content">
+          <div class="project-card-icon"><i class="{{ p.icon_class or 'fa-solid fa-grid-2' }}"></i></div>
+          <h3 class="h6 mb-2"><span class="project-title-link">{{ p.title }}</span></h3>
+        </div>
 
         {% if p.quick_links %}
-        <div class="d-flex flex-wrap gap-2 mt-auto">
+        <div class="d-flex flex-wrap gap-2 mt-auto project-card-content">
           {% for q in p.quick_links %}
           <a href="{{ q.path }}" class="project-quick-link">
             <i class="fa-solid fa-link"></i>

@@ -7,11 +7,12 @@ USING (
   SELECT 'sb' AS item_key, 2 AS display_order FROM dual UNION ALL
   SELECT 'ft' AS item_key, 3 AS display_order FROM dual UNION ALL
   SELECT 'dash_llm_space' AS item_key, 4 AS display_order FROM dual UNION ALL
-  SELECT 'shortcuts' AS item_key, 5 AS display_order FROM dual UNION ALL
-  SELECT 'toggles' AS item_key, 6 AS display_order FROM dual UNION ALL
-  SELECT 'sql' AS item_key, 7 AS display_order FROM dual UNION ALL
-  SELECT 'kv' AS item_key, 8 AS display_order FROM dual UNION ALL
-  SELECT 'uploads' AS item_key, 9 AS display_order FROM dual
+  SELECT 'api' AS item_key, 5 AS display_order FROM dual UNION ALL
+  SELECT 'shortcuts' AS item_key, 6 AS display_order FROM dual UNION ALL
+  SELECT 'toggles' AS item_key, 7 AS display_order FROM dual UNION ALL
+  SELECT 'sql' AS item_key, 8 AS display_order FROM dual UNION ALL
+  SELECT 'kv' AS item_key, 9 AS display_order FROM dual UNION ALL
+  SELECT 'uploads' AS item_key, 10 AS display_order FROM dual
 ) s
 ON (t.item_key = s.item_key AND LOWER(TRIM(NVL(t.category, ''))) = 'dashboard')
 WHEN MATCHED THEN
@@ -21,11 +22,12 @@ WHEN MATCHED THEN
       WHEN 'sb' THEN '{"order":2}'
       WHEN 'ft' THEN '{"order":3}'
       WHEN 'dash_llm_space' THEN '{"icon":"fa-solid fa-chart-pie","order":4}'
-      WHEN 'shortcuts' THEN '{"order":5}'
-      WHEN 'toggles' THEN '{"order":6}'
-      WHEN 'sql' THEN '{"order":7}'
-      WHEN 'kv' THEN '{"order":8}'
-      WHEN 'uploads' THEN '{"order":9}'
+      WHEN 'api' THEN '{"icon":"fa-solid fa-key","order":5}'
+      WHEN 'shortcuts' THEN '{"order":6}'
+      WHEN 'toggles' THEN '{"order":7}'
+      WHEN 'sql' THEN '{"order":8}'
+      WHEN 'kv' THEN '{"order":9}'
+      WHEN 'uploads' THEN '{"order":10}'
       ELSE t.additional_info
     END;
 

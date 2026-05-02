@@ -94,7 +94,18 @@ def register_auth_guard(app: Flask) -> None:
     @app.before_request
     def require_authentication():
         public_paths = {"/health", "/login"}
-        if request.path in public_paths or request.path.startswith("/static/") or request.path.startswith("/sb/public/"):
+        public_endpoints = {
+            "api_project.api_validate_key",
+            "ft.ft_api_process_pending",
+        }
+        if (
+            request.path in public_paths
+            or request.path.startswith("/static/")
+            or request.path.startswith("/sb/public/")
+            or request.path.startswith("/api/validate-key")
+            or request.path.startswith("/ft/api/")
+            or request.endpoint in public_endpoints
+        ):
             return None
         if is_authenticated():
             return None
