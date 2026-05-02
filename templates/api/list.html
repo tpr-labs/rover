@@ -1,0 +1,99 @@
+{% extends "shared/base.html" %}
+{% block title %}API Keys · Rover{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0 text-white">API Keys</h1>
+  <a class="btn btn-primary" href="{{ url_for('api_project.api_keys_new_page') }}"><i class="fa-solid fa-key me-1"></i>Create API Key</a>
+</div>
+
+{% if message == 'deleted' %}
+<div class="alert alert-success">API key deleted permanently.</div>
+{% elif message %}
+<div class="alert alert-info">{{ message }}</div>
+{% endif %}
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <form method="get" class="row g-2">
+      <div class="col-md-6">
+        <input class="form-control" name="q" placeholder="Search key reference/name" value="{{ search }}" />
+      </div>
+      <div class="col-md-3">
+        <select class="form-select" name="status">
+          <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
+          <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactive</option>
+          <option value="all" {% if status == 'all' %}selected{% endif %}>All</option>
+        </select>
+      </div>
+      <div class="col-md-3 d-grid">
+        <button class="btn btn-primary" type="submit">Search</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped table-hover mb-0">
+        <thead class="table-dark">
+          <tr>
+            <th>Name</th>
+            <th>Reference</th>
+            <th>Preview</th>
+            <th>Status</th>
+            <th>Updated</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for item in items %}
+          <tr>
+            <td class="fw-semibold">{{ item.name }}</td>
+            <td><code>{{ item.item_key }}</code></td>
+            <td>
+              {% if item.prefix or item.last4 %}
+                <code>{{ item.prefix }}...{{ item.last4 }}</code>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>
+              {% if item.is_active == 'Y' %}
+              <span class="badge rv-badge rv-badge-active">ACTIVE</span>
+              {% else %}
+              <span class="badge rv-badge rv-badge-neutral">INACTIVE</span>
+              {% endif %}
+            </td>
+            <td>{{ item.updated_at_human }}</td>
+            <td class="text-end">
+              <div class="d-inline-flex gap-1">
+                <a class="btn btn-sm btn-secondary" href="{{ url_for('api_project.api_keys_detail', item_key=item.item_key) }}">View</a>
+                <form method="post" action="{{ url_for('api_project.api_keys_rotate', item_key=item.item_key) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                  <button class="btn btn-sm btn-secondary" type="submit">Rotate</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6" class="text-center text-muted py-4">No API keys found.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mt-3">
+  <span class="text-muted">Page {{ page }} of {{ total_pages }}</span>
+  <div class="d-flex gap-2">
+    {% if page > 1 %}
+    <a class="btn btn-sm btn-secondary" href="{{ url_for('api_project.api_keys_list', q=search, status=status, page=page-1) }}">Previous</a>
+    {% endif %}
+    {% if page < total_pages %}
+    <a class="btn btn-sm btn-secondary" href="{{ url_for('api_project.api_keys_list', q=search, status=status, page=page+1) }}">Next</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,8 +1,9 @@
 import hmac
 import os
+import re
 import secrets
 
-from flask import Flask, current_app, redirect, request, session, url_for
+from flask import Flask, current_app, jsonify, redirect, request, session, url_for
 
 
 def _default_nav_shortcuts() -> list[dict]:
@@ -93,8 +94,45 @@ def configure_auth(app: Flask) -> None:
 def register_auth_guard(app: Flask) -> None:
     @app.before_request
     def require_authentication():
+        # Enforce API-key auth for machine endpoints: /<project>/api/*
+        # (e.g. /ft/api/process-pending). This prevents accidental exposure
+        # if future API routes are added without explicit route-level checks.
+        is_machine_api_path = bool(re.match(r"^/[A-Za-z0-9_-]+/api(?:/|$)", request.path))
+        if is_machine_api_path:
+            # Exempt key validation endpoint itself from the central machine-API guard.
+            if request.path.startswith("/api/validate-key"):
+                return None
+            try:
+                from app.projects.api.repository import (
+                    extract_api_key_from_request,
+                    find_active_api_key_match,
+                    get_api_key_header_name,
+                )
+
+                raw_key = extract_api_key_from_request(request)
+                if not raw_key:
+                    return (
+                        jsonify(
+                            {
+                                "ok": False,
+                                "error": "API key missing",
+                                "header_name": get_api_key_header_name(),
+                            }
+                        ),
+                        401,
+                    )
+                if not find_active_api_key_match(raw_key):
+                    return jsonify({"ok": False, "error": "Invalid API key"}), 401
+            except Exception:
+                return jsonify({"ok": False, "error": "API authentication unavailable"}), 503
+
         public_paths = {"/health", "/login"}
-        if request.path in public_paths or request.path.startswith("/static/") or request.path.startswith("/sb/public/"):
+        if (
+            request.path in public_paths
+            or request.path.startswith("/static/")
+            or request.path.startswith("/sb/public/")
+            or request.path.startswith("/api/validate-key")
+        ):
             return None
         if is_authenticated():
             return None

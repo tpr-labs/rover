@@ -4,6 +4,9 @@ from datetime import date, datetime
 from flask import Blueprint, jsonify, redirect, render_template, request, url_for
 
 from app.core.auth import is_valid_csrf
+from app.core.messenger import send_telegram_text
+from app.projects.api.repository import extract_api_key_from_request, find_active_api_key_match, get_api_key_header_name
+from app.projects.messenger.repository import create_message_record
 from . import llm
 from .repository import (
     create_account,
@@ -107,6 +110,66 @@ def _parse_raw(raw_text: str) -> dict:
 
 def _split_bulk_lines(raw_bulk_text: str) -> list[str]:
     return [line.strip() for line in (raw_bulk_text or "").splitlines() if line.strip()]
+
+
+def _require_valid_api_key():
+    raw_key = extract_api_key_from_request(request)
+    if not raw_key:
+        return None, (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": "API key missing",
+                    "header_name": get_api_key_header_name(),
+                }
+            ),
+            400,
+        )
+
+    matched = find_active_api_key_match(raw_key)
+    if not matched:
+        return None, (jsonify({"ok": False, "error": "Invalid API key"}), 401)
+
+    return matched, None
+
+
+def _notify_ft_processing(event: str, details: str) -> None:
+    """Best-effort Telegram notification + audit log for FT processing calls."""
+    text = (details or "").strip()
+    message_text = f"[FT] {event}\n{text}".strip()
+
+    status = "FAILED"
+    telegram_message_id = None
+    telegram_chat_id = None
+    http_status = None
+    response_payload = None
+    error_message = None
+
+    try:
+        result = send_telegram_text(message_text)
+        status = "SENT" if result.get("ok") else "FAILED"
+        telegram_message_id = result.get("telegram_message_id")
+        telegram_chat_id = result.get("telegram_chat_id")
+        http_status = result.get("http_status")
+        response_payload = result.get("response_payload")
+        error_message = result.get("error_message")
+    except Exception as exc:
+        error_message = str(exc)
+
+    try:
+        create_message_record(
+            message_text=message_text,
+            status=status,
+            telegram_message_id=telegram_message_id,
+            telegram_chat_id=telegram_chat_id,
+            http_status=http_status,
+            response_payload=response_payload,
+            error_message=error_message,
+            resend_of_message_id=None,
+        )
+    except Exception:
+        # Notification/audit failures should never break FT transaction processing flow.
+        pass
 
 
 @ft_bp.get("/ft")
@@ -293,6 +356,58 @@ def ft_transactions_process_pending():
         return redirect(url_for("ft.ft_transactions_list", msg=msg))
     except ValueError as exc:
         return redirect(url_for("ft.ft_transactions_list", err=str(exc)))
+
+
+@ft_bp.post("/ft/api/process-pending")
+def ft_api_process_pending():
+    api_key_row, err = _require_valid_api_key()
+    if err:
+        _notify_ft_processing(event="API Process Pending AUTH_ERROR", details="Invalid or missing API key")
+        return err
+
+    limit_raw = (request.args.get("limit") or request.form.get("limit") or "50").strip()
+    try:
+        limit = max(1, min(int(limit_raw), 200))
+    except ValueError:
+        _notify_ft_processing(event="API Process Pending ERROR", details="limit must be an integer between 1 and 200")
+        return jsonify({"ok": False, "error": "limit must be an integer between 1 and 200"}), 400
+
+    try:
+        result = llm.process_pending_transactions(limit=limit)
+        summary = get_finance_summary()
+        _notify_ft_processing(
+            event="API Process Pending SUCCESS",
+            details=(
+                f"api_key={api_key_row.get('item_key')} processed={result.get('processed')} "
+                f"failed={result.get('failed')} cache_hits={result.get('cache_hits')} model={result.get('model')}"
+            ),
+        )
+        return jsonify(
+            {
+                "ok": True,
+                "authenticated_api_key": {
+                    "item_key": api_key_row.get("item_key"),
+                    "name": api_key_row.get("name"),
+                },
+                "processing": result,
+                "summary": {
+                    "total_income": summary.get("total_income"),
+                    "total_expense": summary.get("total_expense"),
+                    "net_amount": summary.get("net_amount"),
+                    "pending_count": summary.get("pending_count"),
+                    "today_spend": summary.get("today_spend"),
+                    "month_spend": summary.get("month_spend"),
+                    "llm_calls_today": summary.get("llm_calls_today"),
+                    "llm_calls_total": summary.get("llm_calls_total"),
+                },
+            }
+        )
+    except ValueError as exc:
+        _notify_ft_processing(event="API Process Pending ERROR", details=str(exc))
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:
+        _notify_ft_processing(event="API Process Pending ERROR", details=str(exc))
+        raise
 
 
 @ft_bp.post("/ft/transactions/<int:transaction_id>/mark-pending")

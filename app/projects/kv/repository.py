@@ -16,11 +16,13 @@ DEFAULT_DASHBOARD_ORDER_BY_KEY = {
     "ft": 3,
     "ft_tracker": 4,
     "dash_llm_space": 5,
-    "shortcuts": 6,
-    "toggles": 7,
-    "sql": 8,
-    "kv": 9,
-    "uploads": 10,
+    "api": 6,
+    "messenger": 7,
+    "shortcuts": 8,
+    "toggles": 9,
+    "sql": 10,
+    "kv": 11,
+    "uploads": 12,
 }
 
 
