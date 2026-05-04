@@ -123,6 +123,8 @@ def register_auth_guard(app: Flask) -> None:
                     )
                 if not find_active_api_key_match(raw_key):
                     return jsonify({"ok": False, "error": "Invalid API key"}), 401
+                # API key is valid; do not fall through to session-login checks.
+                return None
             except Exception:
                 return jsonify({"ok": False, "error": "API authentication unavailable"}), 503
 
