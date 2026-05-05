@@ -26,8 +26,44 @@ def _safe_filename(name: str) -> str:
 
 def _normalize_par_url(raw: str) -> str:
     value = (raw or "").strip()
+
+    # Accept common wrapped/config formats from KV storage.
+    if value.startswith("{") and value.endswith("}"):
+        import json
+
+        try:
+            payload = json.loads(value)
+        except json.JSONDecodeError:
+            payload = None
+        if isinstance(payload, dict):
+            for key in ("par_url", "url", "value", "oci_par", "upload_par", "read_par"):
+                candidate = payload.get(key)
+                if isinstance(candidate, str) and candidate.strip():
+                    value = candidate.strip()
+                    break
+
+    # Remove optional key-prefix wrappers like "PAR_URL=..."
+    if "=" in value and not value.lower().startswith(("http://", "https://")):
+        k, v = value.split("=", 1)
+        if k.strip().lower() in {"par_url", "url", "value", "oci_par", "upload_par", "read_par"}:
+            value = v.strip()
+
+    # Remove surrounding quotes often introduced by SQL editors/copy-paste.
+    value = value.strip().strip('"').strip("'")
+
+    # Remove accidental leading Unicode BOM if present.
+    if value.startswith("\ufeff"):
+        value = value.lstrip("\ufeff")
+
     if not value:
         raise ValueError("Upload PAR URL is not configured")
+
+    # If value contains surrounding explanatory text, extract first URL-like token.
+    if not value.lower().startswith(("http://", "https://")):
+        m = re.search(r"https?://\S+", value, flags=re.IGNORECASE)
+        if m:
+            value = m.group(0).strip().rstrip(")],;'")
+
     if not (value.startswith("http://") or value.startswith("https://")):
         raise ValueError("Upload PAR URL must start with http:// or https://")
     return value
@@ -74,12 +110,24 @@ def _get_par_url(item_key: str, key_label: str) -> str:
             if not row:
                 raise ValueError(f"KV key '{key_label}' is missing")
 
-            # Backward-compatible lookup:
-            # prefer additional_info, fallback to item_value if that's where PAR is stored.
-            par_candidate = (row[0] or "").strip() or (row[1] or "").strip()
-            if not par_candidate:
+            # Backward-compatible lookup across both columns.
+            additional_info = (row[0] or "").strip()
+            item_value = (row[1] or "").strip()
+            if not additional_info and not item_value:
                 raise ValueError(f"KV key '{key_label}' is empty (set PAR in additional_info or item_value)")
-            return _normalize_par_url(par_candidate)
+
+            # Try additional_info first, then fallback to item_value if first value is non-URL metadata.
+            for par_candidate in (additional_info, item_value):
+                if not par_candidate:
+                    continue
+                try:
+                    return _normalize_par_url(par_candidate)
+                except ValueError:
+                    continue
+
+            raise ValueError(
+                f"KV key '{key_label}' does not contain a valid URL in additional_info or item_value"
+            )
 
 
 def get_upload_par_url() -> str:

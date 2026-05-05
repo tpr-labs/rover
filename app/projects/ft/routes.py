@@ -7,8 +7,10 @@ from app.core.auth import is_valid_csrf
 from app.core.messenger import send_telegram_text
 from app.projects.api.repository import extract_api_key_from_request, find_active_api_key_match, get_api_key_header_name
 from app.projects.messenger.repository import create_message_record
+from app.projects.uploads.repository import get_read_object_url
 from . import llm
 from .repository import (
+    add_transaction_upload_link,
     create_account,
     create_transaction,
     default_transaction_is_active_for_account,
@@ -21,8 +23,11 @@ from .repository import (
     get_transaction,
     list_accounts,
     list_llm_calls,
+    list_transaction_upload_candidates,
+    list_transaction_upload_links,
     list_transactions,
     mark_transaction_pending,
+    remove_transaction_upload_link,
     resolve_account_id_by_name,
     toggle_transaction_active,
     update_account,
@@ -482,7 +487,56 @@ def ft_transaction_detail(transaction_id: int):
     item["created_at_human"] = _humanize_timestamp(item.get("created_at"))
     item["updated_at_human"] = _humanize_timestamp(item.get("updated_at"))
     item["tx_date_human"] = _humanize_timestamp(item.get("tx_date"))
-    return render_template("ft/transaction_detail.html", item=item, message=request.args.get("msg"))
+
+    linked_uploads = list_transaction_upload_links(transaction_id)
+    for upload in linked_uploads:
+        upload["is_image"] = (upload.get("content_type") or "").lower().startswith("image/")
+        try:
+            upload["read_object_url"] = get_read_object_url(upload.get("object_name") or "")
+        except ValueError:
+            upload["read_object_url"] = None
+    upload_candidates = list_transaction_upload_candidates(transaction_id)
+
+    return render_template(
+        "ft/transaction_detail.html",
+        item=item,
+        linked_uploads=linked_uploads,
+        upload_candidates=upload_candidates,
+        message=request.args.get("msg"),
+    )
+
+
+@ft_bp.post("/ft/transactions/<int:transaction_id>/uploads/link")
+def ft_transaction_upload_link(transaction_id: int):
+    if not is_valid_csrf(request.form.get("csrf_token")):
+        return render_template("shared/error.html"), 400
+
+    item = get_transaction(transaction_id)
+    if not item:
+        return render_template("shared/error.html"), 404
+
+    upload_id_raw = (request.form.get("upload_id") or "").strip()
+    if not upload_id_raw.isdigit():
+        return redirect(url_for("ft.ft_transaction_detail", transaction_id=transaction_id))
+
+    try:
+        add_transaction_upload_link(transaction_id=transaction_id, upload_id=int(upload_id_raw))
+        return redirect(url_for("ft.ft_transaction_detail", transaction_id=transaction_id, msg="upload_linked"))
+    except Exception:
+        return redirect(url_for("ft.ft_transaction_detail", transaction_id=transaction_id, msg="upload_link_failed"))
+
+
+@ft_bp.post("/ft/transactions/<int:transaction_id>/uploads/<int:upload_id>/unlink")
+def ft_transaction_upload_unlink(transaction_id: int, upload_id: int):
+    if not is_valid_csrf(request.form.get("csrf_token")):
+        return render_template("shared/error.html"), 400
+
+    item = get_transaction(transaction_id)
+    if not item:
+        return render_template("shared/error.html"), 404
+
+    remove_transaction_upload_link(transaction_id=transaction_id, upload_id=upload_id)
+    return redirect(url_for("ft.ft_transaction_detail", transaction_id=transaction_id, msg="upload_unlinked"))
 
 
 @ft_bp.get("/ft/transactions/<int:transaction_id>/edit")
