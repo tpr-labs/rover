@@ -173,4 +173,41 @@
     {% endfor %}
   </ul>
 </div>
+
+<div class="card shadow-sm mt-3">
+  <div class="card-header fw-semibold">Linked Uploads</div>
+  <div class="card-body">
+    {% if upload_links %}
+      <div class="row g-3">
+        {% for u in upload_links %}
+          <div class="col-12 col-md-6">
+            <div class="card bg-dark border-secondary h-100">
+              {% if u.is_image %}
+                <a href="{{ u.read_object_url or url_for('uploads.uploads_file_view', upload_id=u.upload_id) }}" target="_blank" rel="noopener noreferrer">
+                  <img
+                    src="{{ u.read_object_url or url_for('uploads.uploads_file_content', upload_id=u.upload_id) }}"
+                    alt="{{ u.original_file_name or u.title }}"
+                    class="card-img-top"
+                    style="max-height: 220px; object-fit: cover;"
+                  />
+                </a>
+              {% endif %}
+              <div class="card-body">
+                <div class="fw-semibold text-white">{{ u.title }}</div>
+                <div class="small text-secondary">{{ u.original_file_name or '-' }}</div>
+                <div class="small text-secondary">{{ u.content_type or 'application/octet-stream' }} · {{ u.size_bytes }} bytes</div>
+              </div>
+              <div class="card-footer d-flex gap-2">
+                <a class="btn btn-sm btn-secondary" href="{{ url_for('uploads.uploads_file_view', upload_id=u.upload_id) }}">View</a>
+                <a class="btn btn-sm btn-secondary" href="{{ url_for('uploads.uploads_download', upload_id=u.upload_id) }}">Download</a>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-muted">No linked uploads.</div>
+    {% endif %}
+  </div>
+</div>
 {% endblock %}
