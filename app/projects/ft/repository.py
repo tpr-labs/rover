@@ -537,6 +537,105 @@ def get_transaction(transaction_id: int) -> dict | None:
             }
 
 
+def list_transaction_upload_links(transaction_id: int) -> list[dict]:
+    sql = """
+        SELECT u.upload_id,
+               u.title,
+               u.original_file_name,
+               u.content_type,
+               u.size_bytes,
+               u.object_name,
+               l.created_at
+        FROM uploads_ft_transaction_links l
+        JOIN uploads_files u ON u.upload_id = l.upload_id
+        WHERE l.transaction_id = :transaction_id
+        ORDER BY l.created_at DESC, u.upload_id DESC
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, {"transaction_id": int(transaction_id)})
+            return [
+                {
+                    "upload_id": int(r[0]),
+                    "title": r[1],
+                    "original_file_name": r[2],
+                    "content_type": r[3],
+                    "size_bytes": int(r[4] or 0),
+                    "object_name": r[5],
+                    "linked_at": r[6],
+                }
+                for r in cur.fetchall()
+            ]
+
+
+def list_transaction_upload_candidates(transaction_id: int) -> list[dict]:
+    sql = """
+        SELECT u.upload_id,
+               u.title,
+               u.original_file_name,
+               u.content_type,
+               u.updated_at
+        FROM uploads_files u
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM uploads_ft_transaction_links l
+            WHERE l.transaction_id = :transaction_id
+              AND l.upload_id = u.upload_id
+        )
+        ORDER BY u.updated_at DESC, u.upload_id DESC
+        FETCH FIRST 200 ROWS ONLY
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, {"transaction_id": int(transaction_id)})
+            return [
+                {
+                    "upload_id": int(r[0]),
+                    "title": r[1],
+                    "original_file_name": r[2],
+                    "content_type": r[3],
+                    "updated_at": r[4],
+                }
+                for r in cur.fetchall()
+            ]
+
+
+def add_transaction_upload_link(transaction_id: int, upload_id: int) -> None:
+    sql = """
+        INSERT INTO uploads_ft_transaction_links (transaction_id, upload_id)
+        VALUES (:transaction_id, :upload_id)
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                sql,
+                {
+                    "transaction_id": int(transaction_id),
+                    "upload_id": int(upload_id),
+                },
+            )
+            conn.commit()
+
+
+def remove_transaction_upload_link(transaction_id: int, upload_id: int) -> bool:
+    sql = """
+        DELETE FROM uploads_ft_transaction_links
+        WHERE transaction_id = :transaction_id
+          AND upload_id = :upload_id
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                sql,
+                {
+                    "transaction_id": int(transaction_id),
+                    "upload_id": int(upload_id),
+                },
+            )
+            conn.commit()
+            return cur.rowcount > 0
+
+
 def create_transaction(
     raw_text: str,
     amount: float | int | str,

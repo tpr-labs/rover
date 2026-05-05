@@ -19,6 +19,9 @@
 </div>
 
 {% if message == 'created' %}<div class="alert alert-success">Transaction created.</div>{% elif message == 'updated' %}<div class="alert alert-success">Transaction updated.</div>{% endif %}
+{% if message == 'upload_linked' %}<div class="alert alert-success">Upload linked to this transaction.</div>{% endif %}
+{% if message == 'upload_unlinked' %}<div class="alert alert-success">Upload unlinked from this transaction.</div>{% endif %}
+{% if message == 'upload_link_failed' %}<div class="alert alert-danger">Could not link selected upload.</div>{% endif %}
 
 <div class="ft-panel p-3 mb-3"><div class="card-body p-0"><dl class="row mb-0">
   <dt class="col-sm-3">Raw Text</dt><dd class="col-sm-9" style="white-space: pre-wrap;">{{ item.raw_text or '-' }}</dd>
@@ -34,6 +37,64 @@
   <dt class="col-sm-3">Created At</dt><dd class="col-sm-9">{{ item.created_at_human }}</dd>
   <dt class="col-sm-3">Updated At</dt><dd class="col-sm-9">{{ item.updated_at_human }}</dd>
 </dl></div></div>
+
+<div class="ft-panel p-3 mb-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="h6 mb-0 text-white">Linked Upload Files</h2>
+  </div>
+
+  <form method="post" action="{{ url_for('ft.ft_transaction_upload_link', transaction_id=item.transaction_id) }}" class="row g-2 mb-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <div class="col-9">
+      <select class="form-select" name="upload_id" required>
+        {% for c in upload_candidates %}
+        <option value="{{ c.upload_id }}">{{ c.title }}{% if c.original_file_name %} ({{ c.original_file_name }}){% endif %}</option>
+        {% else %}
+        <option value="" disabled selected>No available uploads</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-3 d-grid">
+      <button class="btn btn-secondary" type="submit" {% if not upload_candidates %}disabled{% endif %}>Link</button>
+    </div>
+  </form>
+
+  {% if linked_uploads %}
+  <div class="row g-3">
+    {% for u in linked_uploads %}
+    <div class="col-12 col-md-6">
+      <div class="card bg-dark border-secondary h-100">
+        {% if u.is_image %}
+        <a href="{{ u.read_object_url or url_for('uploads.uploads_file_view', upload_id=u.upload_id) }}" target="_blank" rel="noopener noreferrer">
+          <img
+            src="{{ u.read_object_url or url_for('uploads.uploads_file_content', upload_id=u.upload_id) }}"
+            alt="{{ u.original_file_name or u.title }}"
+            class="card-img-top"
+            style="max-height: 240px; object-fit: cover;"
+          />
+        </a>
+        {% endif %}
+        <div class="card-body">
+          <div class="fw-semibold text-white">{{ u.title }}</div>
+          <div class="small text-secondary">{{ u.original_file_name or '-' }}</div>
+          <div class="small text-secondary">{{ u.content_type or 'application/octet-stream' }} · {{ u.size_bytes }} bytes</div>
+        </div>
+        <div class="card-footer d-flex gap-2">
+          <a class="btn btn-sm btn-secondary" href="{{ url_for('uploads.uploads_file_view', upload_id=u.upload_id) }}">View</a>
+          <a class="btn btn-sm btn-secondary" href="{{ url_for('uploads.uploads_download', upload_id=u.upload_id) }}">Download</a>
+          <form method="post" action="{{ url_for('ft.ft_transaction_upload_unlink', transaction_id=item.transaction_id, upload_id=u.upload_id) }}" class="ms-auto">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button class="btn btn-sm btn-secondary" type="submit">Unlink</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-secondary small">No uploads linked to this transaction yet.</div>
+  {% endif %}
+</div>
 
 <form method="post" action="{{ url_for('ft.ft_transaction_delete', transaction_id=item.transaction_id) }}" onsubmit="return confirm('Delete this transaction?');">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
