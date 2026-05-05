@@ -6,6 +6,7 @@ from datetime import date, datetime
 from flask import Blueprint, jsonify, redirect, render_template, request, url_for
 
 from app.core.auth import is_valid_csrf
+from app.projects.uploads.repository import get_read_object_url
 from .repository import (
     add_file_link,
     autosave_file,
@@ -21,6 +22,7 @@ from .repository import (
     list_file_links,
     list_files,
     list_link_candidates,
+    list_upload_links,
     delete_file,
     delete_folder,
     remove_file_link,
@@ -498,12 +500,22 @@ def sb_file_view(file_id: int):
     if file.get("is_public") == "Y" and file.get("public_token"):
         public_url = url_for("sb.sb_public_file_view", token=file["public_token"], _external=True)
     file_path = _build_file_path(file)
+
+    upload_links = list_upload_links(file_id)
+    for upload in upload_links:
+        upload["is_image"] = (upload.get("content_type") or "").lower().startswith("image/")
+        try:
+            upload["read_object_url"] = get_read_object_url(upload.get("object_name") or "")
+        except ValueError:
+            upload["read_object_url"] = None
+
     return render_template(
         "sb/file_view.html",
         file=file,
         file_path=file_path,
         html_content=html_content,
         links=list_file_links(file_id),
+        upload_links=upload_links,
         public_url=public_url,
     )
 

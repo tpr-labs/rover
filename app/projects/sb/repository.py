@@ -527,6 +527,37 @@ def list_file_links(file_id: int) -> list[dict[str, Any]]:
             return [{"file_id": int(r[0]), "title": r[1]} for r in cur.fetchall()]
 
 
+def list_upload_links(file_id: int) -> list[dict[str, Any]]:
+    sql = """
+        SELECT u.upload_id,
+               u.title,
+               u.original_file_name,
+               u.content_type,
+               u.size_bytes,
+               u.object_name,
+               l.created_at
+        FROM uploads_sb_file_links l
+        JOIN uploads_files u ON u.upload_id = l.upload_id
+        WHERE l.file_id = :file_id
+        ORDER BY l.created_at DESC, u.upload_id DESC
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, {"file_id": file_id})
+            return [
+                {
+                    "upload_id": int(r[0]),
+                    "title": r[1],
+                    "original_file_name": r[2],
+                    "content_type": r[3],
+                    "size_bytes": int(r[4] or 0),
+                    "object_name": r[5],
+                    "linked_at": r[6],
+                }
+                for r in cur.fetchall()
+            ]
+
+
 def list_link_candidates(exclude_file_id: int) -> list[dict[str, Any]]:
     sql = """
         SELECT file_id, title
