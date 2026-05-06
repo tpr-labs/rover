@@ -1,6 +1,8 @@
 import math
 from typing import Any
 
+import oracledb
+
 from app.core.db import get_db_connection
 
 
@@ -18,6 +20,31 @@ def _normalize_status(value: str | None) -> str:
     if status not in {"ALL", "SENT", "FAILED"}:
         return "ALL"
     return status
+
+
+def _normalize_direction(value: str | None) -> str:
+    direction = (value or "OUTBOUND").strip().upper()
+    if direction not in {"OUTBOUND", "INBOUND"}:
+        return "OUTBOUND"
+    return direction
+
+
+def _normalize_processing_status(value: str | None) -> str | None:
+    if value is None:
+        return None
+    status = (value or "").strip().upper()
+    if status not in {"NEW", "PROCESSED", "FAILED"}:
+        return None
+    return status
+
+
+def _normalize_message_type(value: str | None) -> str | None:
+    if value is None:
+        return None
+    msg_type = (value or "").strip().upper()
+    if msg_type not in {"BOOKMARK", "TRANSACTION", "UNCATEGORIZED"}:
+        return None
+    return msg_type
 
 
 def validate_message_text(message_text: str) -> str:
@@ -62,7 +89,14 @@ def list_messages(
         SELECT m.message_id,
                m.message_text,
                m.status,
+               m.direction,
+               m.processing_status,
+               m.message_type,
+               m.processed_at,
+               m.bookmark_id,
+               m.transaction_id,
                m.telegram_message_id,
+               m.telegram_update_id,
                m.telegram_chat_id,
                m.http_status,
                m.error_message,
@@ -89,14 +123,21 @@ def list_messages(
                     "message_id": int(r[0]),
                     "message_text": _coerce_text(r[1]),
                     "status": r[2],
-                    "telegram_message_id": r[3],
-                    "telegram_chat_id": r[4],
-                    "http_status": int(r[5]) if r[5] is not None else None,
-                    "error_message": _coerce_text(r[6]) if r[6] is not None else None,
-                    "is_hidden": r[7],
-                    "resend_of_message_id": int(r[8]) if r[8] is not None else None,
-                    "created_at": r[9],
-                    "updated_at": r[10],
+                    "direction": r[3],
+                    "processing_status": r[4],
+                    "message_type": r[5],
+                    "processed_at": r[6],
+                    "bookmark_id": int(r[7]) if r[7] is not None else None,
+                    "transaction_id": int(r[8]) if r[8] is not None else None,
+                    "telegram_message_id": r[9],
+                    "telegram_update_id": int(r[10]) if r[10] is not None else None,
+                    "telegram_chat_id": r[11],
+                    "http_status": int(r[12]) if r[12] is not None else None,
+                    "error_message": _coerce_text(r[13]) if r[13] is not None else None,
+                    "is_hidden": r[14],
+                    "resend_of_message_id": int(r[15]) if r[15] is not None else None,
+                    "created_at": r[16],
+                    "updated_at": r[17],
                 }
                 for r in cur.fetchall()
             ]
@@ -110,7 +151,14 @@ def get_message(message_id: int) -> dict | None:
         SELECT message_id,
                message_text,
                status,
+               direction,
+               processing_status,
+               message_type,
+               processed_at,
+               bookmark_id,
+               transaction_id,
                telegram_message_id,
+               telegram_update_id,
                telegram_chat_id,
                http_status,
                response_payload,
@@ -132,15 +180,22 @@ def get_message(message_id: int) -> dict | None:
                 "message_id": int(row[0]),
                 "message_text": _coerce_text(row[1]),
                 "status": row[2],
-                "telegram_message_id": row[3],
-                "telegram_chat_id": row[4],
-                "http_status": int(row[5]) if row[5] is not None else None,
-                "response_payload": _coerce_text(row[6]),
-                "error_message": _coerce_text(row[7]) if row[7] is not None else None,
-                "is_hidden": row[8],
-                "resend_of_message_id": int(row[9]) if row[9] is not None else None,
-                "created_at": row[10],
-                "updated_at": row[11],
+                "direction": row[3],
+                "processing_status": row[4],
+                "message_type": row[5],
+                "processed_at": row[6],
+                "bookmark_id": int(row[7]) if row[7] is not None else None,
+                "transaction_id": int(row[8]) if row[8] is not None else None,
+                "telegram_message_id": row[9],
+                "telegram_update_id": int(row[10]) if row[10] is not None else None,
+                "telegram_chat_id": row[11],
+                "http_status": int(row[12]) if row[12] is not None else None,
+                "response_payload": _coerce_text(row[13]),
+                "error_message": _coerce_text(row[14]) if row[14] is not None else None,
+                "is_hidden": row[15],
+                "resend_of_message_id": int(row[16]) if row[16] is not None else None,
+                "created_at": row[17],
+                "updated_at": row[18],
             }
 
 
@@ -163,6 +218,7 @@ def create_message_record(
         INSERT INTO messenger_messages (
             message_text,
             status,
+            direction,
             telegram_message_id,
             telegram_chat_id,
             http_status,
@@ -173,6 +229,7 @@ def create_message_record(
         VALUES (
             :message_text,
             :status,
+            'OUTBOUND',
             :telegram_message_id,
             :telegram_chat_id,
             :http_status,
@@ -203,6 +260,170 @@ def create_message_record(
             return int(out_id.getvalue()[0])
 
 
+def get_last_inbound_update_id(chat_id: str | None = None) -> int:
+    where_chat = "AND telegram_chat_id = :chat_id" if (chat_id or "").strip() else ""
+    sql = f"""
+        SELECT NVL(MAX(telegram_update_id), 0)
+        FROM messenger_messages
+        WHERE direction = 'INBOUND'
+          AND telegram_update_id IS NOT NULL
+          {where_chat}
+    """
+    params = {"chat_id": (chat_id or "").strip()} if where_chat else {}
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+            row = cur.fetchone()
+            return int((row or [0])[0] or 0)
+
+
+def create_inbound_message_record(
+    message_text: str,
+    telegram_update_id: int,
+    telegram_message_id: str | None,
+    telegram_chat_id: str | None,
+    response_payload: str | None = None,
+) -> int | None:
+    text = validate_message_text(message_text)
+    sql = """
+        INSERT INTO messenger_messages (
+            message_text,
+            status,
+            direction,
+            processing_status,
+            telegram_update_id,
+            telegram_message_id,
+            telegram_chat_id,
+            response_payload,
+            is_hidden
+        )
+        VALUES (
+            :message_text,
+            'SENT',
+            'INBOUND',
+            'NEW',
+            :telegram_update_id,
+            :telegram_message_id,
+            :telegram_chat_id,
+            :response_payload,
+            'N'
+        )
+        RETURNING message_id INTO :message_id
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            out_id = cur.var(int)
+            try:
+                cur.execute(
+                    sql,
+                    {
+                        "message_text": text,
+                        "telegram_update_id": int(telegram_update_id),
+                        "telegram_message_id": (telegram_message_id or "").strip() or None,
+                        "telegram_chat_id": (telegram_chat_id or "").strip() or None,
+                        "response_payload": (response_payload or "").strip() or None,
+                        "message_id": out_id,
+                    },
+                )
+                conn.commit()
+                return int(out_id.getvalue()[0])
+            except oracledb.IntegrityError as exc:
+                err = exc.args[0]
+                if getattr(err, "code", None) == 1:
+                    # Duplicate telegram_update_id (already fetched)
+                    return None
+                raise
+
+
+def list_new_inbound_messages(limit: int = 100) -> list[dict]:
+    cap = max(1, min(int(limit), 500))
+    sql = """
+        SELECT message_id,
+               message_text,
+               telegram_update_id,
+               telegram_message_id,
+               telegram_chat_id,
+               created_at
+        FROM messenger_messages
+        WHERE direction = 'INBOUND'
+          AND NVL(processing_status, 'NEW') = 'NEW'
+        ORDER BY created_at ASC, message_id ASC
+        FETCH FIRST :limit ROWS ONLY
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, {"limit": cap})
+            return [
+                {
+                    "message_id": int(r[0]),
+                    "message_text": _coerce_text(r[1]),
+                    "telegram_update_id": int(r[2]) if r[2] is not None else None,
+                    "telegram_message_id": r[3],
+                    "telegram_chat_id": r[4],
+                    "created_at": r[5],
+                }
+                for r in cur.fetchall()
+            ]
+
+
+def mark_inbound_processed(
+    message_id: int,
+    message_type: str,
+    bookmark_id: int | None = None,
+    transaction_id: int | None = None,
+) -> bool:
+    normalized_type = _normalize_message_type(message_type)
+    if not normalized_type:
+        raise ValueError("Invalid message type")
+
+    sql = """
+        UPDATE messenger_messages
+        SET processing_status = 'PROCESSED',
+            message_type = :message_type,
+            processed_at = SYSTIMESTAMP,
+            bookmark_id = :bookmark_id,
+            transaction_id = :transaction_id,
+            error_message = NULL
+        WHERE message_id = :message_id
+          AND direction = 'INBOUND'
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                sql,
+                {
+                    "message_id": int(message_id),
+                    "message_type": normalized_type,
+                    "bookmark_id": int(bookmark_id) if bookmark_id is not None else None,
+                    "transaction_id": int(transaction_id) if transaction_id is not None else None,
+                },
+            )
+            conn.commit()
+            return cur.rowcount > 0
+
+
+def mark_inbound_failed(message_id: int, error_message: str) -> bool:
+    sql = """
+        UPDATE messenger_messages
+        SET processing_status = 'FAILED',
+            processed_at = SYSTIMESTAMP,
+            error_message = :error_message
+        WHERE message_id = :message_id
+          AND direction = 'INBOUND'
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                sql,
+                {
+                    "message_id": int(message_id),
+                    "error_message": (error_message or "").strip()[:4000] or "Processing failed",
+                },
+            )
+            conn.commit()
+            return cur.rowcount > 0
+
+
 def hide_message(message_id: int) -> bool:
     sql = "UPDATE messenger_messages SET is_hidden = 'Y' WHERE message_id = :message_id"
     with get_db_connection() as conn:
@@ -219,3 +440,12 @@ def unhide_message(message_id: int) -> bool:
             cur.execute(sql, {"message_id": int(message_id)})
             conn.commit()
             return cur.rowcount > 0
+
+
+def hide_all_messages() -> int:
+    sql = "UPDATE messenger_messages SET is_hidden = 'Y' WHERE is_hidden = 'N'"
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql)
+            conn.commit()
+            return int(cur.rowcount or 0)

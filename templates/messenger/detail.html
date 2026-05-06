@@ -5,10 +5,12 @@
   <h1 class="h4 mb-0 text-white">Message #{{ item.message_id }}</h1>
   <div class="d-flex gap-2">
     <a class="btn btn-secondary" href="{{ url_for('messenger.messenger_list') }}"><i class="fa-solid fa-arrow-left me-1"></i>Back</a>
+    {% if can_resend %}
     <form method="post" action="{{ url_for('messenger.messenger_resend', message_id=item.message_id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
       <button class="btn btn-secondary" type="submit"><i class="fa-solid fa-rotate-right me-1"></i>Resend</button>
     </form>
+    {% endif %}
   </div>
 </div>
 
@@ -22,6 +24,14 @@
 <div class="alert alert-warning">Resend failed. See error details below.</div>
 {% elif message == 'unhidden' %}
 <div class="alert alert-success">Message restored to visible list.</div>
+{% elif message == 'assigned' %}
+<div class="alert alert-success">Message category assigned successfully.</div>
+{% elif message == 'assign_failed' %}
+<div class="alert alert-warning">Manual assign failed. See error details below.</div>
+{% elif message == 'invalid_manual_type' %}
+<div class="alert alert-warning">Invalid manual category selected.</div>
+{% elif message == 'assign_not_allowed' %}
+<div class="alert alert-warning">Manual assign is allowed only for inbound messages.</div>
 {% elif message %}
 <div class="alert alert-info">{{ message }}</div>
 {% endif %}
@@ -31,10 +41,45 @@
     <dl class="row mb-0">
       <dt class="col-sm-3">Status</dt>
       <dd class="col-sm-9">
-        {% if item.status == 'SENT' %}
+        {% if item.direction == 'INBOUND' %}
+          {% if item.processing_status == 'NEW' %}
+          <span class="badge rv-badge">NEW</span>
+          {% elif item.processing_status == 'PROCESSED' %}
+          <span class="badge rv-badge rv-badge-active">PROCESSED</span>
+          {% else %}
+          <span class="badge rv-badge rv-badge-danger">FAILED</span>
+          {% endif %}
+        {% elif item.status == 'SENT' %}
         <span class="badge rv-badge rv-badge-active">SENT</span>
         {% else %}
         <span class="badge rv-badge rv-badge-danger">FAILED</span>
+        {% endif %}
+      </dd>
+
+      <dt class="col-sm-3">Direction</dt>
+      <dd class="col-sm-9">{{ item.direction or 'OUTBOUND' }}</dd>
+
+      <dt class="col-sm-3">Message Type</dt>
+      <dd class="col-sm-9">{{ item.message_type or '-' }}</dd>
+
+      <dt class="col-sm-3">Processed At</dt>
+      <dd class="col-sm-9">{{ humanize_timestamp(item.processed_at) if item.processed_at else '-' }}</dd>
+
+      <dt class="col-sm-3">Linked Bookmark</dt>
+      <dd class="col-sm-9">
+        {% if item.bookmark_id %}
+        <a href="{{ url_for('bookmarks.bookmarks_detail', bookmark_id=item.bookmark_id) }}">#{{ item.bookmark_id }}</a>
+        {% else %}
+        -
+        {% endif %}
+      </dd>
+
+      <dt class="col-sm-3">Linked Transaction</dt>
+      <dd class="col-sm-9">
+        {% if item.transaction_id %}
+        <a href="{{ url_for('ft.ft_transaction_detail', transaction_id=item.transaction_id) }}">#{{ item.transaction_id }}</a>
+        {% else %}
+        -
         {% endif %}
       </dd>
 
@@ -43,6 +88,9 @@
 
       <dt class="col-sm-3">Telegram Message ID</dt>
       <dd class="col-sm-9">{{ item.telegram_message_id or '-' }}</dd>
+
+      <dt class="col-sm-3">Telegram Update ID</dt>
+      <dd class="col-sm-9">{{ item.telegram_update_id or '-' }}</dd>
 
       <dt class="col-sm-3">HTTP Status</dt>
       <dd class="col-sm-9">{{ item.http_status if item.http_status is not none else '-' }}</dd>
@@ -89,6 +137,29 @@
   <div class="card-header fw-semibold">Telegram Response Payload</div>
   <div class="card-body">
     <pre class="mb-0" style="white-space: pre-wrap;">{{ item.response_payload }}</pre>
+  </div>
+</div>
+{% endif %}
+
+{% if item.direction == 'INBOUND' and (item.processing_status != 'PROCESSED' or not item.message_type or item.message_type == 'UNCATEGORIZED') %}
+<div class="card shadow-sm mb-3">
+  <div class="card-header fw-semibold">Manual Categorization</div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('messenger.messenger_assign_category', message_id=item.message_id) }}" class="row g-2 align-items-end">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <div class="col-md-5">
+        <label class="form-label">Assign As</label>
+        <select name="message_type" class="form-select" required>
+          <option value="BOOKMARK">BOOKMARK</option>
+          <option value="TRANSACTION">TRANSACTION</option>
+          <option value="UNCATEGORIZED" selected>UNCATEGORIZED</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-secondary" type="submit">Assign</button>
+      </div>
+    </form>
+    <p class="text-muted small mt-2 mb-0">Use this when auto-categorization could not classify correctly.</p>
   </div>
 </div>
 {% endif %}
