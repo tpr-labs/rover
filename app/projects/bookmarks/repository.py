@@ -252,6 +252,43 @@ def get_bookmark(bookmark_id: int) -> dict | None:
             }
 
 
+def get_bookmark_by_url(url: str) -> dict | None:
+    normalized = (url or "").strip()
+    if not normalized:
+        return None
+    sql = """
+        SELECT bookmark_id,
+               url,
+               title,
+               category,
+               starred,
+               notes,
+               created_at,
+               updated_at
+        FROM bookmarks
+        WHERE url = :url
+        FETCH FIRST 1 ROWS ONLY
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, {"url": normalized})
+            row = cur.fetchone()
+            if not row:
+                return None
+            return {
+                "bookmark_id": int(row[0]),
+                "url": row[1],
+                "title": row[2],
+                "category": row[3],
+                "starred": int(row[4] or 0),
+                "notes": _coerce_text(row[5]),
+                "created_at": row[6],
+                "updated_at": row[7],
+                "study_card_count": 0,
+                "study_card_job_status": None,
+            }
+
+
 def get_bookmark_study_cards_max(default_value: int = 10) -> int:
     sql = """
         SELECT additional_info, item_value

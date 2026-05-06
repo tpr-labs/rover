@@ -390,10 +390,6 @@ def ft_api_process_pending():
         return jsonify(
             {
                 "ok": True,
-                "authenticated_api_key": {
-                    "item_key": api_key_row.get("item_key"),
-                    "name": api_key_row.get("name"),
-                },
                 "processing": result,
                 "summary": {
                     "total_income": summary.get("total_income"),

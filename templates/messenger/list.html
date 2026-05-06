@@ -3,7 +3,17 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4 mb-0 text-white">Messenger</h1>
-  <a class="btn btn-primary" href="{{ url_for('messenger.messenger_new_page') }}"><i class="fa-solid fa-paper-plane me-1"></i>Send Message</a>
+  <div class="d-flex gap-2">
+    <form method="post" action="{{ url_for('messenger.messenger_fetch_and_analyze_incoming') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <button class="btn btn-secondary" type="submit"><i class="fa-solid fa-bolt me-1"></i>Read &amp; Analyze</button>
+    </form>
+    <form method="post" action="{{ url_for('messenger.messenger_hide_all') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <button class="btn btn-secondary" type="submit"><i class="fa-solid fa-eye-slash me-1"></i>Hide All</button>
+    </form>
+    <a class="btn btn-primary" href="{{ url_for('messenger.messenger_new_page') }}"><i class="fa-solid fa-paper-plane me-1"></i>Send Message</a>
+  </div>
 </div>
 
 {% if message == 'hidden' %}
@@ -45,7 +55,9 @@
         <thead class="table-dark">
           <tr>
             <th>Message</th>
+            <th>Dir</th>
             <th>Status</th>
+            <th>Type</th>
             <th>Chat</th>
             <th>Created</th>
             <th class="text-end">Actions</th>
@@ -56,10 +68,32 @@
           <tr>
             <td>{{ item.message_text_preview }}</td>
             <td>
-              {% if item.status == 'SENT' %}
+              {% if item.direction == 'INBOUND' %}
+              <span class="badge rv-badge">IN</span>
+              {% else %}
+              <span class="badge rv-badge rv-badge-active">OUT</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if item.direction == 'INBOUND' %}
+                {% if item.processing_status == 'NEW' %}
+                <span class="badge rv-badge">NEW</span>
+                {% elif item.processing_status == 'PROCESSED' %}
+                <span class="badge rv-badge rv-badge-active">PROCESSED</span>
+                {% else %}
+                <span class="badge rv-badge rv-badge-danger">FAILED</span>
+                {% endif %}
+              {% elif item.status == 'SENT' %}
               <span class="badge rv-badge rv-badge-active">SENT</span>
               {% else %}
               <span class="badge rv-badge rv-badge-danger">FAILED</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if item.message_type %}
+              <span class="badge rv-badge">{{ item.message_type }}</span>
+              {% else %}
+              -
               {% endif %}
             </td>
             <td>{{ item.telegram_chat_id or '-' }}</td>
@@ -67,10 +101,12 @@
             <td class="text-end">
               <div class="d-inline-flex gap-1">
                 <a class="btn btn-sm btn-secondary" href="{{ url_for('messenger.messenger_detail', message_id=item.message_id) }}">View</a>
-                <form method="post" action="{{ url_for('messenger.messenger_resend', message_id=item.message_id) }}">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                  <button class="btn btn-sm btn-secondary" type="submit">Resend</button>
-                </form>
+                {% if item.direction != 'INBOUND' %}
+                  <form method="post" action="{{ url_for('messenger.messenger_resend', message_id=item.message_id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                    <button class="btn btn-sm btn-secondary" type="submit">Resend</button>
+                  </form>
+                {% endif %}
                 {% if item.is_hidden == 'Y' %}
                 <form method="post" action="{{ url_for('messenger.messenger_unhide', message_id=item.message_id) }}">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
@@ -86,7 +122,7 @@
             </td>
           </tr>
         {% else %}
-          <tr><td colspan="5" class="text-center text-muted py-4">No messages found.</td></tr>
+          <tr><td colspan="7" class="text-center text-muted py-4">No messages found.</td></tr>
         {% endfor %}
         </tbody>
       </table>

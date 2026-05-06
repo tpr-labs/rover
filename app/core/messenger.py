@@ -132,3 +132,83 @@ def send_telegram_text(
         "telegram_chat_id": str(telegram_chat_id) if telegram_chat_id is not None else None,
         "error_message": error_message,
     }
+
+
+def fetch_telegram_updates(
+    chat_id: str | None = None,
+    offset: int | None = None,
+    limit: int = 100,
+) -> dict[str, Any]:
+    token = get_telegram_bot_token()
+    target_chat_id = (chat_id or "").strip() or get_telegram_default_chat_id()
+    capped_limit = max(1, min(int(limit or 100), 100))
+
+    url = f"https://api.telegram.org/bot{token}/getUpdates"
+    payload: dict[str, Any] = {
+        "limit": capped_limit,
+        "timeout": 0,
+        "allowed_updates": ["message"],
+    }
+    if offset is not None:
+        payload["offset"] = int(offset)
+
+    try:
+        response = requests.post(url, json=payload, timeout=(8, 30))
+        status_code = int(response.status_code)
+        response_json = response.json()
+    except requests.RequestException as exc:
+        return {
+            "ok": False,
+            "http_status": None,
+            "error_message": str(exc),
+            "updates": [],
+            "raw_response": "",
+        }
+    except Exception:
+        return {
+            "ok": False,
+            "http_status": int(getattr(response, "status_code", 0) or 0) if 'response' in locals() else None,
+            "error_message": "Invalid Telegram response",
+            "updates": [],
+            "raw_response": response.text if 'response' in locals() else "",
+        }
+
+    if not (200 <= status_code < 300) or not response_json.get("ok"):
+        return {
+            "ok": False,
+            "http_status": status_code,
+            "error_message": str(response_json.get("description") or "Telegram getUpdates failed"),
+            "updates": [],
+            "raw_response": json.dumps(response_json, ensure_ascii=False),
+        }
+
+    normalized_updates: list[dict[str, Any]] = []
+    for item in (response_json.get("result") or []):
+        update_id = item.get("update_id")
+        message = item.get("message") or {}
+        text = (message.get("text") or "").strip()
+        if update_id is None or not text:
+            continue
+
+        msg_chat = message.get("chat") or {}
+        msg_chat_id = str(msg_chat.get("id")) if msg_chat.get("id") is not None else None
+        if msg_chat_id != str(target_chat_id):
+            continue
+
+        normalized_updates.append(
+            {
+                "update_id": int(update_id),
+                "telegram_message_id": str(message.get("message_id")) if message.get("message_id") is not None else None,
+                "telegram_chat_id": msg_chat_id,
+                "message_text": text,
+                "message_date": message.get("date"),
+            }
+        )
+
+    return {
+        "ok": True,
+        "http_status": status_code,
+        "error_message": None,
+        "updates": normalized_updates,
+        "raw_response": json.dumps(response_json, ensure_ascii=False),
+    }
